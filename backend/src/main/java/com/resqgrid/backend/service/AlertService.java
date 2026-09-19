@@ -1,0 +1,37 @@
+package com.resqgrid.backend.service;
+
+import com.resqgrid.backend.entity.Alert;
+import com.resqgrid.backend.repository.AlertRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class AlertService {
+
+    private final AlertRepository alertRepository;
+
+    public List<Alert> getActiveAlerts() {
+        return alertRepository.findByActiveTrueOrderByCreatedAtDesc();
+    }
+
+    @Transactional
+    public void dismissAlert(String alertId) {
+        alertRepository.findById(alertId).ifPresent(alert -> {
+            alert.setActive(false);
+            alertRepository.save(alert);
+        });
+    }
+
+    @Transactional
+    public Alert createAlert(Alert alert) {
+        if (alert.getId() == null) {
+            alert.setId("ALT-" + System.currentTimeMillis());
+        }
+        alert.setActive(true);
+        return alertRepository.save(alert);
+    }
+}
