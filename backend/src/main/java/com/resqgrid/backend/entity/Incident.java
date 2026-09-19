@@ -1,6 +1,6 @@
 package com.resqgrid.backend.entity;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -59,13 +59,13 @@ public class Incident {
     @Builder.Default
     private Integer duplicateCount = 0;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "incident_capabilities", joinColumns = @JoinColumn(name = "incident_id"))
     @Column(name = "capability")
     @Builder.Default
     private List<String> requiredCapabilities = new ArrayList<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "incident_assigned_resources", joinColumns = @JoinColumn(name = "incident_id"))
     @Column(name = "resource_id")
     @Builder.Default
