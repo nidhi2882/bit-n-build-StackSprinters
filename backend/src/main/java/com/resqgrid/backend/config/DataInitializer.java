@@ -2,8 +2,10 @@ package com.resqgrid.backend.config;
 
 import com.resqgrid.backend.entity.*;
 import com.resqgrid.backend.repository.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -12,19 +14,46 @@ import java.util.Arrays;
 import java.util.List;
 
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class DataInitializer implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private final UserRepository userRepository;
     private final IncidentRepository incidentRepository;
     private final ResourceRepository resourceRepository;
     private final HospitalRepository hospitalRepository;
     private final AlertRepository alertRepository;
+    private final MongoTemplate mongoTemplate;
+
+    @Autowired
+    public DataInitializer(
+            UserRepository userRepository,
+            IncidentRepository incidentRepository,
+            ResourceRepository resourceRepository,
+            HospitalRepository hospitalRepository,
+            AlertRepository alertRepository,
+            @Autowired(required = false) MongoTemplate mongoTemplate) {
+        this.userRepository = userRepository;
+        this.incidentRepository = incidentRepository;
+        this.resourceRepository = resourceRepository;
+        this.hospitalRepository = hospitalRepository;
+        this.alertRepository = alertRepository;
+        this.mongoTemplate = mongoTemplate;
+    }
 
     @Override
     public void run(String... args) {
-        if (incidentRepository.count() > 0) {
+        if (mongoTemplate != null) {
+            try {
+                if (!mongoTemplate.collectionExists("incidents") || mongoTemplate.getCollection("incidents").countDocuments() == 0) {
+                    log.info("Populating MongoDB database 'resqgrid'...");
+                }
+            } catch (Exception e) {
+                log.warn("Mongo check notice: {}", e.getMessage());
+            }
+        }
+
+        if (incidentRepository.count() > 0 && mongoTemplate != null && mongoTemplate.collectionExists("incidents") && mongoTemplate.getCollection("incidents").countDocuments() > 0) {
             log.info("Database already seeded with demo emergency data.");
             return;
         }
@@ -269,6 +298,26 @@ public class DataInitializer implements CommandLineRunner {
                 .build();
 
         alertRepository.saveAll(Arrays.asList(alert1, alert2));
+
+        if (mongoTemplate != null) {
+            try {
+                log.info("Populating MongoDB database 'resqgrid'...");
+                List<User> usersList = Arrays.asList(operator, responder, hospitalAdmin, authority);
+                List<Resource> resourcesList = Arrays.asList(res1, res2, res3, res4);
+                List<Hospital> hospitalsList = Arrays.asList(h1, h2, h3);
+                List<Incident> incidentsList = Arrays.asList(inc1, inc2, inc3);
+                List<Alert> alertsList = Arrays.asList(alert1, alert2);
+
+                usersList.forEach(u -> mongoTemplate.save(u, "users"));
+                resourcesList.forEach(r -> mongoTemplate.save(r, "resources"));
+                hospitalsList.forEach(h -> mongoTemplate.save(h, "hospitals"));
+                incidentsList.forEach(i -> mongoTemplate.save(i, "incidents"));
+                alertsList.forEach(a -> mongoTemplate.save(a, "alerts"));
+                log.info("MongoDB database 'resqgrid' successfully seeded with collections: users, resources, hospitals, incidents, alerts!");
+            } catch (Exception e) {
+                log.warn("Direct MongoDB seeding notice: {}", e.getMessage());
+            }
+        }
 
         log.info("ResQGrid demo datasets initialized successfully!");
     }
