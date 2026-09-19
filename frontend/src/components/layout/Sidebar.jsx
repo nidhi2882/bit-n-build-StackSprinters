@@ -92,6 +92,14 @@ const Sidebar = () => {
                 </NavLink>
             )}
 
+            {/* Admin Console (Authority Admin, Super Admin, Emergency Operator) */}
+            {(userRole === "Authority Admin" || userRole === "Emergency Operator" || userRole === "Super Admin") && (
+                <NavLink to="/admin" className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
+                    <ShieldCheck size={18} />
+                    <span>Admin Console</span>
+                </NavLink>
+            )}
+
             <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }}>
                     <Radio size={16} className="pulse-dot" style={{ color: '#10b981' }} />

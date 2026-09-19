@@ -1,4 +1,3 @@
-import React from "react";
 import { 
     AlertTriangle, 
     Truck, 
@@ -8,7 +7,10 @@ import {
     Filter, 
     Search,
     MapPin,
-    Radio
+    Radio,
+    PhoneCall,
+    Cpu,
+    Zap
 } from "lucide-react";
 import { useEmergency } from "../context/EmergencyContext";
 import MapView from "../components/map/MapView";
@@ -17,8 +19,11 @@ import AlertBanner from "../components/layout/AlertBanner";
 import IncidentDetailModal from "../components/incidents/IncidentDetailModal";
 import NewIncidentModal from "../components/incidents/NewIncidentModal";
 import AICopilotDrawer from "../components/ai/AICopilotDrawer";
+import CallCenterIngestionModal from "../components/modals/CallCenterIngestionModal";
+import IoTSensorSimulator from "../components/common/IoTSensorSimulator";
 
 function CommandCenter() {
+    const [callCenterModalOpen, setCallCenterModalOpen] = React.useState(false);
     const { 
         incidents, 
         resources, 
@@ -28,7 +33,8 @@ function CommandCenter() {
         filterSeverity, 
         setFilterSeverity,
         searchTerm,
-        setSearchTerm
+        setSearchTerm,
+        addNewIncident
     } = useEmergency();
 
     // Calculate metrics
@@ -92,6 +98,42 @@ function CommandCenter() {
                         </div>
                     </div>
                     <Copy size={24} style={{ color: '#3b82f6' }} />
+                </div>
+            </div>
+
+            {/* Ingestion & AI Status Action Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0f172a", border: "1px solid #1e293b", padding: "10px 16px", borderRadius: "10px", flexWrap: "wrap", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", color: "#a7f3d0", background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "4px 10px", borderRadius: "6px" }}>
+                        <Cpu size={14} style={{ color: "#10b981" }} />
+                        <span>AI Microservice: <strong>FastAPI v1 (NLP + Hard Floor Severity)</strong> Online</span>
+                    </div>
+                    <span style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
+                        Degraded Fallback: <strong>Armed</strong>
+                    </span>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                        onClick={() => setCallCenterModalOpen(true)}
+                        style={{
+                            background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                            border: "none",
+                            color: "#fff",
+                            padding: "8px 16px",
+                            borderRadius: "8px",
+                            fontWeight: 700,
+                            fontSize: "0.82rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            boxShadow: "0 0 12px rgba(59, 130, 246, 0.3)"
+                        }}
+                    >
+                        <PhoneCall size={15} />
+                        <span>112 / 911 Call Intake (Rapid Dispatch)</span>
+                    </button>
                 </div>
             </div>
 
@@ -184,7 +226,15 @@ function CommandCenter() {
                 </div>
             </div>
 
+            {/* IoT & Telemetry Sensor Simulator (Phase 3 Webhook Ingestion) */}
+            <IoTSensorSimulator onSensorIncidentTriggered={(inc) => addNewIncident(inc)} />
+
             {/* Modals & Drawers */}
+            <CallCenterIngestionModal 
+                isOpen={callCenterModalOpen} 
+                onClose={() => setCallCenterModalOpen(false)} 
+                onIncidentCreated={(inc) => addNewIncident(inc)}
+            />
             <IncidentDetailModal />
             <NewIncidentModal />
             <AICopilotDrawer />

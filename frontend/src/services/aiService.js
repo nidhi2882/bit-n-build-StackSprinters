@@ -22,13 +22,25 @@ export const aiService = {
         }
     },
 
-    queryCopilot: async (query) => {
+    queryCopilot: async (query, context = {}) => {
         try {
-            const response = await aiClient.post("/copilot", { query });
+            const response = await aiClient.post("/copilot", { query, context });
             return response.data;
         } catch (error) {
             return {
                 reply: `AI Copilot (Offline Mode): Analyzed query "${query}". Recommended dispatching NDRF Water Rescue Squad 03 for flood emergency.`
+            };
+        }
+    },
+
+    checkDuplicates: async (candidate, existingIncidents = []) => {
+        try {
+            const response = await aiClient.post("/duplicates/check", { candidate, existingIncidents });
+            return response.data;
+        } catch (error) {
+            return {
+                isDuplicate: false,
+                mode: "DEGRADED_FALLBACK"
             };
         }
     }
