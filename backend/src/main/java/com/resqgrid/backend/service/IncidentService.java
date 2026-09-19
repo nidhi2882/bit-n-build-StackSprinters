@@ -23,6 +23,7 @@ public class IncidentService {
     private final ResourceRepository resourceRepository;
     private final ResourceAssignmentRepository resourceAssignmentRepository;
     private final AlertRepository alertRepository;
+    private final MongoSyncService mongoSyncService;
 
     public List<Incident> getAllIncidents() {
         return incidentRepository.findAllByOrderByReportedAtDesc();
@@ -67,6 +68,7 @@ public class IncidentService {
         }
 
         Incident saved = incidentRepository.save(incident);
+        mongoSyncService.syncIncident(saved);
 
         // Auto-escalation trigger: If severity >= 4, trigger immediate Critical Alert
         if (saved.getSeverity() != null && saved.getSeverity() >= 4) {
@@ -83,6 +85,7 @@ public class IncidentService {
                     .createdAt(LocalDateTime.now())
                     .build();
             alertRepository.save(criticalAlert);
+            mongoSyncService.syncAlert(criticalAlert);
         }
 
         return saved;
@@ -93,7 +96,9 @@ public class IncidentService {
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new RuntimeException("Incident not found: " + incidentId));
         incident.setStatus(status);
-        return incidentRepository.save(incident);
+        Incident saved = incidentRepository.save(incident);
+        mongoSyncService.syncIncident(saved);
+        return saved;
     }
 
     @Transactional
@@ -110,12 +115,14 @@ public class IncidentService {
                 incident.setStatus("Assigned");
             }
             incidentRepository.save(incident);
+            mongoSyncService.syncIncident(incident);
         }
 
         // 2. Update Resource
         resource.setStatus("En-Route");
         resource.setAssignedIncidentId(incidentId);
         resourceRepository.save(resource);
+        mongoSyncService.syncResource(resource);
 
         // 3. Record Assignment Audit
         ResourceAssignment assignment = ResourceAssignment.builder()
@@ -127,6 +134,7 @@ public class IncidentService {
                 .notes("Dispatched by Emergency Operator via ResQGrid Command Center")
                 .build();
         resourceAssignmentRepository.save(assignment);
+        mongoSyncService.syncResourceAssignment(assignment);
 
         return incident;
     }

@@ -8,11 +8,30 @@ function LoginPage() {
     const navigate = useNavigate();
 
     const [form, setForm] = useState({
-        email: "",
-        password: "",
+        email: "operator@resqgrid.gov",
+        password: "operator123",
         role: "Emergency Operator"
     });
     const [loading, setLoading] = useState(false);
+
+    const handleRoleChange = (selectedRole) => {
+        let email = "operator@resqgrid.gov";
+        let password = "operator123";
+        if (selectedRole === "Response Team") {
+            email = "responder@ndrf.gov";
+            password = "responder123";
+        } else if (selectedRole === "Hospital Admin") {
+            email = "hospital@ssg.org";
+            password = "hospital123";
+        } else if (selectedRole === "Authority Admin") {
+            email = "authority@vadodara.gov";
+            password = "authority123";
+        } else if (selectedRole === "Citizen") {
+            email = "citizen@resqgrid.org";
+            password = "citizen123";
+        }
+        setForm({ role: selectedRole, email, password });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -51,7 +70,7 @@ function LoginPage() {
                         </label>
                         <select
                             value={form.role}
-                            onChange={(e) => setForm({ ...form, role: e.target.value })}
+                            onChange={(e) => handleRoleChange(e.target.value)}
                             style={{
                                 width: '100%',
                                 background: '#0b1120',

@@ -9,25 +9,36 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedUser = authService.getCurrentUser();
-        const storedToken = localStorage.getItem("token");
-        if (storedUser && storedToken) {
-            setUser(storedUser);
-            setToken(storedToken);
-        } else {
-            // Default demo login as Emergency Operator if none exists
-            const defaultDemo = {
-                id: "USR-001",
-                name: "Command Operator",
-                email: "operator@resqgrid.org",
-                role: "Emergency Operator"
-            };
-            setUser(defaultDemo);
-            setToken("demo-token-operator");
-            localStorage.setItem("user", JSON.stringify(defaultDemo));
-            localStorage.setItem("token", "demo-token-operator");
-        }
-        setLoading(false);
+        const initAuth = async () => {
+            const storedUser = authService.getCurrentUser();
+            const storedToken = localStorage.getItem("token");
+            if (storedUser && storedToken && !storedToken.startsWith("demo-token-") && !storedToken.startsWith("mock-jwt-")) {
+                setUser(storedUser);
+                setToken(storedToken);
+                setLoading(false);
+            } else {
+                try {
+                    const result = await authService.login({
+                        email: "operator@resqgrid.gov",
+                        password: "operator123",
+                        role: "Emergency Operator"
+                    });
+                    setUser(result.user);
+                    setToken(result.token);
+                } catch (e) {
+                    const defaultDemo = {
+                        id: "USR-001",
+                        name: "Command Operator",
+                        email: "operator@resqgrid.gov",
+                        role: "Emergency Operator"
+                    };
+                    setUser(defaultDemo);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        initAuth();
     }, []);
 
     const login = async (credentials) => {
@@ -50,17 +61,39 @@ export const AuthProvider = ({ children }) => {
         setToken(null);
     };
 
-    // Quick demo role switcher
-    const switchRoleDemo = (newRole) => {
-        if (!user) return;
-        const updated = {
-            ...user,
-            role: newRole,
-            unitName: newRole === "Response Team" ? "NDRF Squad 03" : null,
-            hospitalId: newRole === "Hospital Admin" ? "HOSP-001" : null
-        };
-        setUser(updated);
-        localStorage.setItem("user", JSON.stringify(updated));
+    // Role switcher authenticating directly with seeded real users
+    const switchRoleDemo = async (newRole) => {
+        let email = "operator@resqgrid.gov";
+        let password = "operator123";
+        if (newRole === "Response Team") {
+            email = "responder@ndrf.gov";
+            password = "responder123";
+        } else if (newRole === "Hospital Admin") {
+            email = "hospital@ssg.org";
+            password = "hospital123";
+        } else if (newRole === "Authority Admin") {
+            email = "authority@vadodara.gov";
+            password = "authority123";
+        } else if (newRole === "Citizen") {
+            email = "citizen@resqgrid.org";
+            password = "citizen123";
+        }
+
+        try {
+            const result = await authService.login({ email, password, role: newRole });
+            setUser(result.user);
+            setToken(result.token);
+        } catch (err) {
+            const updated = {
+                ...(user || {}),
+                role: newRole,
+                email,
+                unitName: newRole === "Response Team" ? "NDRF Squad 03" : null,
+                hospitalId: newRole === "Hospital Admin" ? "HOSP-001" : null
+            };
+            setUser(updated);
+            localStorage.setItem("user", JSON.stringify(updated));
+        }
     };
 
     return (

@@ -27,6 +27,7 @@ public class IngestionService {
     private final TrustScoringService trustScoringService;
     private final AiClientService aiClientService;
     private final TaxonomyService taxonomyService;
+    private final MongoSyncService mongoSyncService;
 
     /**
      * 1. Citizen Web / PWA Report Ingestion
@@ -96,6 +97,7 @@ public class IngestionService {
                 .createdAt(LocalDateTime.now())
                 .build();
         incidentReportRepository.save(report);
+        mongoSyncService.syncIncidentReport(report);
 
         Map<String, Object> response = new HashMap<>();
         response.put("incident", savedIncident);
@@ -154,6 +156,7 @@ public class IngestionService {
                 .createdAt(LocalDateTime.now())
                 .build();
         alertRepository.save(sosAlert);
+        mongoSyncService.syncAlert(sosAlert);
 
         IncidentReport report = IncidentReport.builder()
                 .id("REP-SOS-" + System.currentTimeMillis())
@@ -164,6 +167,7 @@ public class IngestionService {
                 .createdAt(LocalDateTime.now())
                 .build();
         incidentReportRepository.save(report);
+        mongoSyncService.syncIncidentReport(report);
 
         Map<String, Object> response = new HashMap<>();
         response.put("incident", savedIncident);
@@ -213,6 +217,7 @@ public class IngestionService {
                 .createdAt(LocalDateTime.now())
                 .build();
         incidentReportRepository.save(report);
+        mongoSyncService.syncIncidentReport(report);
 
         return saved;
     }
@@ -273,6 +278,7 @@ public class IngestionService {
                     .createdAt(LocalDateTime.now())
                     .build();
             alertRepository.save(sensorAlert);
+            mongoSyncService.syncAlert(sensorAlert);
 
             result.put("incident", saved);
             result.put("alert", sensorAlert);
@@ -311,12 +317,15 @@ public class IngestionService {
                     .createdAt(LocalDateTime.now())
                     .build();
             alertRepository.save(warning);
+            mongoSyncService.syncAlert(warning);
         } else if (traumaRatio >= 0.75) {
             hospital.setStatus("Near Capacity");
         } else {
             hospital.setStatus("Optimal");
         }
 
-        return hospitalRepository.save(hospital);
+        Hospital saved = hospitalRepository.save(hospital);
+        mongoSyncService.syncHospital(saved);
+        return saved;
     }
 }
