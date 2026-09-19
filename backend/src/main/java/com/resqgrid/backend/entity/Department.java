@@ -8,47 +8,30 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "departments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class Department {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
-
     @Column(nullable = false, unique = true)
-    private String email;
+    private String departmentId; // e.g. "DEPT-FIRE-01"
 
     @Column(nullable = false)
-    private String password;
+    private String authorityId; // Links to parent Authority
 
     @Column(nullable = false)
-    private String role; // "Emergency Operator", "Citizen", "Response Team", "Hospital Admin", "Authority Admin"
+    private String name; // e.g. "Fire & Rescue Department"
 
-    private String phone;
+    @Column(nullable = false)
+    private String category; // e.g. "CAT_FIRE"
 
-    private String organization;
-
-    @Column(name = "authority_id")
-    private String authorityId;
-
-    @Column(name = "department_id")
-    private String departmentId;
-
-    @Column(name = "department_category")
-    private String departmentCategory;
-
-    @Column(name = "unit_id")
-    private String unitId;
-
-    @Column(name = "facility_id")
-    private String facilityId;
+    private Long adminUserId; // ID of Department Admin
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

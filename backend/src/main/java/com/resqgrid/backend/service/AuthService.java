@@ -2,20 +2,23 @@ package com.resqgrid.backend.service;
 
 import com.resqgrid.backend.entity.User;
 import com.resqgrid.backend.repository.UserRepository;
+import com.resqgrid.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider tokenProvider;
 
     public Map<String, Object> login(String email, String password, String role) {
         Optional<User> userOpt = userRepository.findByEmail(email);
@@ -23,26 +26,34 @@ public class AuthService {
         User user;
         if (userOpt.isPresent()) {
             user = userOpt.get();
-            // In dev/hackathon demo, allow login with matching email
-            if (password != null && !password.isEmpty() && !password.equals(user.getPassword())) {
-                // If demo user password doesn't match default, update it for seamless test
-                user.setPassword(password);
-                userRepository.save(user);
+            // Verify password using BCrypt
+            if (password != null && !password.isEmpty()) {
+                if (!passwordEncoder.matches(password, user.getPassword()) && !password.equals(user.getPassword())) {
+                    throw new IllegalArgumentException("Invalid email or password");
+                }
+                // If stored in plain text from earlier scaffold, re-encode with BCrypt
+                if (!user.getPassword().startsWith("$2a$")) {
+                    user.setPassword(passwordEncoder.encode(password));
+                    userRepository.save(user);
+                }
             }
         } else {
-            // Auto-provision demo user if requested role does not exist yet
+            // Auto-provision demo user if requested
+            String rawPassword = password != null ? password : "password123";
             user = User.builder()
                     .name(email.contains("@") ? email.substring(0, email.indexOf("@")) : "Operator")
                     .email(email)
-                    .password(password != null ? password : "password123")
+                    .password(passwordEncoder.encode(rawPassword))
                     .role(role != null ? role : "Emergency Operator")
                     .organization("Emergency Operations Center")
+                    .authorityId("AUTH-NYC-01")
                     .createdAt(LocalDateTime.now())
                     .build();
             user = userRepository.save(user);
         }
 
-        String token = "resqgrid-jwt-" + UUID.randomUUID().toString();
+        // Generate HMAC SHA-256 signed JWT token
+        String token = tokenProvider.generateToken(user);
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
@@ -54,6 +65,10 @@ public class AuthService {
         userData.put("role", user.getRole());
         userData.put("phone", user.getPhone());
         userData.put("organization", user.getOrganization());
+        userData.put("authorityId", user.getAuthorityId());
+        userData.put("departmentId", user.getDepartmentId());
+        userData.put("facilityId", user.getFacilityId());
+
         if ("Response Team".equalsIgnoreCase(user.getRole())) {
             userData.put("unitName", "NDRF Squad 03");
         } else if ("Hospital Admin".equalsIgnoreCase(user.getRole())) {
@@ -66,15 +81,18 @@ public class AuthService {
 
     public Map<String, Object> register(User newUser) {
         if (newUser.getEmail() != null && userRepository.existsByEmail(newUser.getEmail())) {
-            throw new RuntimeException("Email already registered: " + newUser.getEmail());
+            throw new IllegalArgumentException("Email already registered: " + newUser.getEmail());
         }
 
         if (newUser.getRole() == null || newUser.getRole().trim().isEmpty()) {
             newUser.setRole("Citizen");
         }
+
+        String rawPassword = newUser.getPassword() != null ? newUser.getPassword() : "password123";
+        newUser.setPassword(passwordEncoder.encode(rawPassword));
         newUser.setCreatedAt(LocalDateTime.now());
         User saved = userRepository.save(newUser);
 
-        return login(saved.getEmail(), saved.getPassword(), saved.getRole());
+        return login(saved.getEmail(), rawPassword, saved.getRole());
     }
 }
