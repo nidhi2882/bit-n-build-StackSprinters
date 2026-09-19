@@ -2,7 +2,6 @@ package com.resqgrid.backend.service;
 
 import com.resqgrid.backend.entity.Hospital;
 import com.resqgrid.backend.repository.HospitalRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,11 +9,15 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class HospitalService {
 
     private final HospitalRepository hospitalRepository;
     private final MongoSyncService mongoSyncService;
+
+    public HospitalService(HospitalRepository hospitalRepository, MongoSyncService mongoSyncService) {
+        this.hospitalRepository = hospitalRepository;
+        this.mongoSyncService = mongoSyncService;
+    }
 
     public List<Hospital> getAllHospitals() {
         return hospitalRepository.findAll();

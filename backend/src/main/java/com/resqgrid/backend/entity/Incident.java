@@ -1,40 +1,32 @@
 package com.resqgrid.backend.entity;
 
 import javax.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "incidents")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Incident {
 
     @Id
     @Column(length = 64)
-    private String id; // e.g. "INC-2026-001"
+    private String id;
 
     @Column(nullable = false)
     private String title;
 
     @Column(nullable = false)
-    private String type; // "Flood", "Fire", "Medical", "Hazardous", "Infrastructure", "Cyclone"
+    private String type;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(nullable = false)
-    private Integer severity; // 1 (Minor) to 5 (Critical)
+    private Integer severity;
 
     @Column(nullable = false)
-    private String status; // "Reported", "Classified", "Prioritized", "Assigned", "En-Route", "Arrived", "Resolved"
+    private String status;
 
     @Column(name = "location_name")
     private String locationName;
@@ -56,20 +48,46 @@ public class Incident {
     private Double aiConfidence;
 
     @Column(name = "duplicate_count")
-    @Builder.Default
     private Integer duplicateCount = 0;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "incident_capabilities", joinColumns = @JoinColumn(name = "incident_id"))
     @Column(name = "capability")
-    @Builder.Default
     private List<String> requiredCapabilities = new ArrayList<>();
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "incident_assigned_resources", joinColumns = @JoinColumn(name = "incident_id"))
     @Column(name = "resource_id")
-    @Builder.Default
     private List<String> assignedResourceIds = new ArrayList<>();
+
+    @Column(name = "is_merged")
+    private Boolean isMerged = false;
+
+    @Column(name = "merged_into_incident_id")
+    private String mergedIntoIncidentId;
+
+    public Incident() {}
+
+    public Incident(String id, String title, String type, String description, Integer severity, String status, String locationName, Double lat, Double lng, LocalDateTime reportedAt, String reporterRole, String aiSummary, Double aiConfidence, Integer duplicateCount, List<String> requiredCapabilities, List<String> assignedResourceIds, Boolean isMerged, String mergedIntoIncidentId) {
+        this.id = id;
+        this.title = title;
+        this.type = type;
+        this.description = description;
+        this.severity = severity;
+        this.status = status != null ? status : "Reported";
+        this.locationName = locationName;
+        this.lat = lat;
+        this.lng = lng;
+        this.reportedAt = reportedAt != null ? reportedAt : LocalDateTime.now();
+        this.reporterRole = reporterRole;
+        this.aiSummary = aiSummary;
+        this.aiConfidence = aiConfidence;
+        this.duplicateCount = duplicateCount != null ? duplicateCount : 0;
+        this.requiredCapabilities = requiredCapabilities != null ? requiredCapabilities : new ArrayList<>();
+        this.assignedResourceIds = assignedResourceIds != null ? assignedResourceIds : new ArrayList<>();
+        this.isMerged = isMerged != null ? isMerged : false;
+        this.mergedIntoIncidentId = mergedIntoIncidentId;
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -78,6 +96,120 @@ public class Incident {
         }
         if (status == null) {
             status = "Reported";
+        }
+        if (duplicateCount == null) {
+            duplicateCount = 0;
+        }
+        if (isMerged == null) {
+            isMerged = false;
+        }
+    }
+
+    // Getters and Setters
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public Integer getSeverity() { return severity; }
+    public void setSeverity(Integer severity) { this.severity = severity; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getLocationName() { return locationName; }
+    public void setLocationName(String locationName) { this.locationName = locationName; }
+
+    public Double getLat() { return lat; }
+    public void setLat(Double lat) { this.lat = lat; }
+
+    public Double getLng() { return lng; }
+    public void setLng(Double lng) { this.lng = lng; }
+
+    public LocalDateTime getReportedAt() { return reportedAt; }
+    public void setReportedAt(LocalDateTime reportedAt) { this.reportedAt = reportedAt; }
+
+    public String getReporterRole() { return reporterRole; }
+    public void setReporterRole(String reporterRole) { this.reporterRole = reporterRole; }
+
+    public String getAiSummary() { return aiSummary; }
+    public void setAiSummary(String aiSummary) { this.aiSummary = aiSummary; }
+
+    public Double getAiConfidence() { return aiConfidence; }
+    public void setAiConfidence(Double aiConfidence) { this.aiConfidence = aiConfidence; }
+
+    public Integer getDuplicateCount() { return duplicateCount; }
+    public void setDuplicateCount(Integer duplicateCount) { this.duplicateCount = duplicateCount; }
+
+    public List<String> getRequiredCapabilities() {
+        if (requiredCapabilities == null) requiredCapabilities = new ArrayList<>();
+        return requiredCapabilities;
+    }
+    public void setRequiredCapabilities(List<String> requiredCapabilities) { this.requiredCapabilities = requiredCapabilities; }
+
+    public List<String> getAssignedResourceIds() {
+        if (assignedResourceIds == null) assignedResourceIds = new ArrayList<>();
+        return assignedResourceIds;
+    }
+    public void setAssignedResourceIds(List<String> assignedResourceIds) { this.assignedResourceIds = assignedResourceIds; }
+
+    public Boolean getIsMerged() { return isMerged; }
+    public void setIsMerged(Boolean isMerged) { this.isMerged = isMerged; }
+
+    public String getMergedIntoIncidentId() { return mergedIntoIncidentId; }
+    public void setMergedIntoIncidentId(String mergedIntoIncidentId) { this.mergedIntoIncidentId = mergedIntoIncidentId; }
+
+    // Builder
+    public static IncidentBuilder builder() { return new IncidentBuilder(); }
+
+    public static class IncidentBuilder {
+        private String id;
+        private String title;
+        private String type;
+        private String description;
+        private Integer severity;
+        private String status;
+        private String locationName;
+        private Double lat;
+        private Double lng;
+        private LocalDateTime reportedAt;
+        private String reporterRole;
+        private String aiSummary;
+        private Double aiConfidence;
+        private Integer duplicateCount = 0;
+        private List<String> requiredCapabilities = new ArrayList<>();
+        private List<String> assignedResourceIds = new ArrayList<>();
+        private Boolean isMerged = false;
+        private String mergedIntoIncidentId;
+
+        public IncidentBuilder id(String id) { this.id = id; return this; }
+        public IncidentBuilder title(String title) { this.title = title; return this; }
+        public IncidentBuilder type(String type) { this.type = type; return this; }
+        public IncidentBuilder description(String description) { this.description = description; return this; }
+        public IncidentBuilder severity(Integer severity) { this.severity = severity; return this; }
+        public IncidentBuilder status(String status) { this.status = status; return this; }
+        public IncidentBuilder locationName(String locationName) { this.locationName = locationName; return this; }
+        public IncidentBuilder lat(Double lat) { this.lat = lat; return this; }
+        public IncidentBuilder lng(Double lng) { this.lng = lng; return this; }
+        public IncidentBuilder reportedAt(LocalDateTime reportedAt) { this.reportedAt = reportedAt; return this; }
+        public IncidentBuilder reporterRole(String reporterRole) { this.reporterRole = reporterRole; return this; }
+        public IncidentBuilder aiSummary(String aiSummary) { this.aiSummary = aiSummary; return this; }
+        public IncidentBuilder aiConfidence(Double aiConfidence) { this.aiConfidence = aiConfidence; return this; }
+        public IncidentBuilder duplicateCount(Integer duplicateCount) { this.duplicateCount = duplicateCount; return this; }
+        public IncidentBuilder requiredCapabilities(List<String> requiredCapabilities) { this.requiredCapabilities = requiredCapabilities; return this; }
+        public IncidentBuilder assignedResourceIds(List<String> assignedResourceIds) { this.assignedResourceIds = assignedResourceIds; return this; }
+        public IncidentBuilder isMerged(Boolean isMerged) { this.isMerged = isMerged; return this; }
+        public IncidentBuilder mergedIntoIncidentId(String mergedIntoIncidentId) { this.mergedIntoIncidentId = mergedIntoIncidentId; return this; }
+
+        public Incident build() {
+            return new Incident(id, title, type, description, severity, status, locationName, lat, lng, reportedAt, reporterRole, aiSummary, aiConfidence, duplicateCount, requiredCapabilities, assignedResourceIds, isMerged, mergedIntoIncidentId);
         }
     }
 }

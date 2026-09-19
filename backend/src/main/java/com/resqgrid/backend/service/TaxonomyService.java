@@ -4,17 +4,20 @@ import com.resqgrid.backend.entity.EmergencyCategory;
 import com.resqgrid.backend.entity.EmergencySubType;
 import com.resqgrid.backend.repository.EmergencyCategoryRepository;
 import com.resqgrid.backend.repository.EmergencySubTypeRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class TaxonomyService {
 
     private final EmergencyCategoryRepository categoryRepository;
     private final EmergencySubTypeRepository subTypeRepository;
+
+    public TaxonomyService(EmergencyCategoryRepository categoryRepository, EmergencySubTypeRepository subTypeRepository) {
+        this.categoryRepository = categoryRepository;
+        this.subTypeRepository = subTypeRepository;
+    }
 
     public List<EmergencyCategory> getAllCategories() {
         return categoryRepository.findAll();

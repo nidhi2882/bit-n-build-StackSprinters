@@ -2,7 +2,6 @@ package com.resqgrid.backend.controller;
 
 import com.resqgrid.backend.entity.Hospital;
 import com.resqgrid.backend.service.HospitalService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,10 +10,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/hospitals")
-@RequiredArgsConstructor
 public class HospitalController {
 
     private final HospitalService hospitalService;
+
+    public HospitalController(HospitalService hospitalService) {
+        this.hospitalService = hospitalService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Hospital>> getAllHospitals() {

@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class IngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(IngestionService.class);
@@ -28,6 +27,28 @@ public class IngestionService {
     private final AiClientService aiClientService;
     private final TaxonomyService taxonomyService;
     private final MongoSyncService mongoSyncService;
+
+    public IngestionService(IncidentService incidentService,
+                            IncidentRepository incidentRepository,
+                            IncidentReportRepository incidentReportRepository,
+                            AlertRepository alertRepository,
+                            HospitalRepository hospitalRepository,
+                            RateLimiterService rateLimiterService,
+                            TrustScoringService trustScoringService,
+                            AiClientService aiClientService,
+                            TaxonomyService taxonomyService,
+                            MongoSyncService mongoSyncService) {
+        this.incidentService = incidentService;
+        this.incidentRepository = incidentRepository;
+        this.incidentReportRepository = incidentReportRepository;
+        this.alertRepository = alertRepository;
+        this.hospitalRepository = hospitalRepository;
+        this.rateLimiterService = rateLimiterService;
+        this.trustScoringService = trustScoringService;
+        this.aiClientService = aiClientService;
+        this.taxonomyService = taxonomyService;
+        this.mongoSyncService = mongoSyncService;
+    }
 
     /**
      * 1. Citizen Web / PWA Report Ingestion
@@ -67,6 +88,82 @@ public class IngestionService {
             severity = 5;
         }
 
+        // 2.5 Check 3-Signal Duplicate Consolidation
+        Map<String, Object> candidate = new HashMap<>();
+        candidate.put("lat", req.getLat() != null ? req.getLat() : 22.3072);
+        candidate.put("lng", req.getLng() != null ? req.getLng() : 73.1812);
+        candidate.put("title", req.getTitle());
+        candidate.put("text", combinedText);
+
+        List<Incident> activeIncidents = incidentRepository.findAll();
+        List<Map<String, Object>> existingList = new ArrayList<>();
+        for (Incident inc : activeIncidents) {
+            if (Boolean.TRUE.equals(inc.getIsMerged()) || "Resolved".equalsIgnoreCase(inc.getStatus())) continue;
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", inc.getId());
+            item.put("title", inc.getTitle());
+            item.put("text", inc.getDescription());
+            item.put("lat", inc.getLat());
+            item.put("lng", inc.getLng());
+            item.put("isMerged", inc.getIsMerged());
+            existingList.add(item);
+        }
+
+        Map<String, Object> reqPayload = new HashMap<>();
+        reqPayload.put("candidate", candidate);
+        reqPayload.put("existingIncidents", existingList);
+
+        Map<String, Object> dupCheck = aiClientService.checkDuplicates(reqPayload);
+        if (dupCheck != null && Boolean.TRUE.equals(dupCheck.get("isDuplicate"))) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> bestMatch = (Map<String, Object>) dupCheck.get("bestMatch");
+            if (bestMatch != null && bestMatch.get("matchedIncidentId") != null) {
+                String masterId = bestMatch.get("matchedIncidentId").toString();
+                Optional<Incident> masterOpt = incidentRepository.findById(masterId);
+                if (masterOpt.isPresent()) {
+                    Incident master = masterOpt.get();
+                    master.setDuplicateCount((master.getDuplicateCount() != null ? master.getDuplicateCount() : 0) + 1);
+                    if (master.getDuplicateCount() >= 3 && master.getSeverity() < 5) {
+                        master.setSeverity(master.getSeverity() + 1);
+                        log.info("Duplicate threshold breached on incident {}. Bumping severity to Level {}", masterId, master.getSeverity());
+                    }
+                    incidentRepository.save(master);
+                    mongoSyncService.syncIncident(master);
+
+                    IncidentReport report = IncidentReport.builder()
+                            .id("REP-" + System.currentTimeMillis())
+                            .incidentId(master.getId())
+                            .source("Citizen App (" + (req.getReporterName() != null ? req.getReporterName() : "Citizen") + ")")
+                            .text("[CONSOLIDATED DUPLICATE] " + combinedText)
+                            .time("Just now")
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                    incidentReportRepository.save(report);
+                    mongoSyncService.syncIncidentReport(report);
+
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("incident", master);
+                    response.put("report", report);
+                    response.put("trust", trust);
+                    response.put("consolidated", true);
+                    response.put("duplicateCheck", dupCheck);
+                    return response;
+                }
+            }
+        }
+
+        Double parseLat = req.getLat();
+        Double parseLng = req.getLng();
+        if ((parseLat == null || parseLng == null) && req.getLocationName() != null && req.getLocationName().contains(",")) {
+            try {
+                String[] parts = req.getLocationName().split(",");
+                if (parts.length == 2) {
+                    parseLat = Double.parseDouble(parts[0].trim());
+                    parseLng = Double.parseDouble(parts[1].trim());
+                }
+            } catch (Exception ignored) {}
+        }
+
         // 3. Create Incident
         Incident incident = Incident.builder()
                 .title(req.getTitle())
@@ -75,8 +172,8 @@ public class IngestionService {
                 .severity(severity)
                 .status("Reported")
                 .locationName(req.getLocationName() != null ? req.getLocationName() : "Unknown Location")
-                .lat(req.getLat() != null ? req.getLat() : 22.3072)
-                .lng(req.getLng() != null ? req.getLng() : 73.1812)
+                .lat(parseLat != null ? parseLat : 22.3072)
+                .lng(parseLng != null ? parseLng : 73.1812)
                 .reporterRole("Citizen (Trust: " + trustScore + ")")
                 .aiSummary(aiSummary)
                 .aiConfidence(confidence)

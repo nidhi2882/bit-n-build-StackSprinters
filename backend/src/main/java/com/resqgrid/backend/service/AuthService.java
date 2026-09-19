@@ -3,7 +3,6 @@ package com.resqgrid.backend.service;
 import com.resqgrid.backend.entity.User;
 import com.resqgrid.backend.repository.UserRepository;
 import com.resqgrid.backend.security.JwtTokenProvider;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -13,13 +12,19 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final MongoSyncService mongoSyncService;
+
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider tokenProvider, MongoSyncService mongoSyncService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.tokenProvider = tokenProvider;
+        this.mongoSyncService = mongoSyncService;
+    }
 
     public Map<String, Object> login(String email, String password, String role) {
         Optional<User> userOpt = userRepository.findByEmail(email);

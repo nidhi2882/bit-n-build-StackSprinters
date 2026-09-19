@@ -2,18 +2,21 @@ package com.resqgrid.backend.service;
 
 import com.resqgrid.backend.entity.Alert;
 import com.resqgrid.backend.repository.AlertRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class AlertService {
 
     private final AlertRepository alertRepository;
     private final MongoSyncService mongoSyncService;
+
+    public AlertService(AlertRepository alertRepository, MongoSyncService mongoSyncService) {
+        this.alertRepository = alertRepository;
+        this.mongoSyncService = mongoSyncService;
+    }
 
     public List<Alert> getActiveAlerts() {
         return alertRepository.findByActiveTrueOrderByCreatedAtDesc();

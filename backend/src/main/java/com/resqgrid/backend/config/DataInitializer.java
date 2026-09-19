@@ -141,8 +141,59 @@ public class DataInitializer implements CommandLineRunner {
                 }
             }
         }
+        seedResources();
 
         log.info("ResQGrid initialized with clean state. All incident and emergency reports enter exclusively through the web portal.");
+    }
+
+    private void seedResources() {
+        log.info("Seeding Phase 6 Emergency Response Units into Resource Registry...");
+        List<Resource> seedResources = Arrays.asList(
+                new Resource("RES-001", "NDRF Water Rescue Team 01", "Water Rescue", "Available", 22.3100, 73.1800, "Jarod Base", "+91 98234 56789", "Commander Rajesh Rao", 12, Arrays.asList("WATER_RESCUE", "INFLATABLE_BOAT", "HEAVY_PUMP", "HIGH_CAPACITY_PUMP", "TEMPORARY_SHELTER", "DRAINAGE_UNIT"), null),
+                new Resource("RES-002", "Vadodara Fire Tender 04", "Fire & Rescue", "Available", 22.3050, 73.1780, "Dandiyabazar Fire Station", "+91 98234 56790", "Captain Suresh Kumar", 6, Arrays.asList("FIRE_ENGINE", "FOAM_TENDER", "LADDER_TRUCK", "BREATHING_APPARATUS", "FOREST_FIRE_TRUCK", "EXTRICATION_EQUIPMENT", "HAZMAT_SUIT"), null),
+                new Resource("RES-003", "SSG Trauma ALS Ambulance 02", "Advanced Ambulance", "Available", 22.3020, 73.1880, "SSG Hospital ER", "+91 98234 56791", "Dr. Amit Shah", 4, Arrays.asList("ADVANCED_AMBULANCE", "TRAUMA_TEAM", "PARAMEDIC_TEAM", "ICU_BED_CAPACITY", "BASIC_AMBULANCE", "TRIAGE_KIT", "AMBULANCE", "ICU_BEDS"), null),
+                new Resource("RES-004", "USAR Heavy Rescue Team 01", "Urban Search & Rescue", "Available", 22.3380, 73.1740, "Gorwa USAR Station", "+91 98234 56792", "Major Vikram Singh", 15, Arrays.asList("SEARCH_DOGS", "CONCRETE_CUTTER", "HEAVY_CRANE", "STRUCTURAL_ENGINEER", "USAR_TEAM", "CONCRETE_BREAKER", "CRANE", "HEAVY_EARTHMOVER", "EARTHMOVER"), null),
+                new Resource("RES-005", "Hazmat Decon Unit 01", "Hazmat Unit", "Available", 22.3150, 73.1950, "GSFC Industrial Complex", "+91 98234 56793", "Inspector Priya Nair", 8, Arrays.asList("HAZMAT_SUIT_LEVEL_A", "GAS_DETECTOR", "DECONTAMINATION_UNIT", "LEVEL_A_SUIT", "GAS_SEAL_KIT", "DECON_UNIT", "HAZMAT_SUIT", "NEUTRALIZATION_AGENT", "HAZMAT_CONTAINMENT", "ABSORBENT_BOOM"), null),
+                new Resource("RES-006", "Traffic & Crowd Control Unit 01", "Traffic & Safety", "Available", 22.3200, 73.1700, "Alkapuri Police Station", "+91 98234 56794", "Inspector Ramesh Patel", 10, Arrays.asList("TRAFFIC_CONTROL", "CROWD_CONTROL", "BARRICADES", "TRAFFIC_BARRICADE", "TRAFFIC_DIVERSION", "TACTICAL_UNIT", "EXTRICATION_EQUIPMENT", "TOW_TRUCK"), null),
+                new Resource("RES-007", "Disaster Utility & Generator Unit 01", "Utility Response", "Available", 22.3250, 73.1850, "Akota Utility Depot", "+91 98234 56795", "Eng. Dinesh Sharma", 6, Arrays.asList("EMERGENCY_GENERATOR", "GENSET_MOBILE", "POWER_RESTORATION_CREW", "HIGH_VOLTAGE_CREW", "TREE_TRIMMER", "WATER_REPAIR_CREW", "TREE_CLEARER", "POWER_CREW", "GENSET"), null),
+                new Resource("RES-008", "Specialized Drone & SAR Search Unit 01", "Search & Rescue", "Available", 22.3100, 73.1750, "Gotri SAR Command", "+91 98234 56796", "Captain Ankit Mehta", 5, Arrays.asList("DRONE_THERMAL", "THERMAL_DRONE", "SEARCH_DOGS", "NIGHT_VISION", "ROPE_RESCUE", "TRACKER", "BOOM_BARRIER", "SKIMMER", "CONTAINMENT_VESSEL"), null)
+        );
+
+        for (Resource res : seedResources) {
+            resourceRepository.save(res);
+            if (mongoTemplate != null) {
+                try {
+                    mongoTemplate.save(res, "resources");
+                } catch (Exception e) {
+                    log.warn("Mongo resource save notice for {}: {}", res.getId(), e.getMessage());
+                }
+            }
+        }
+        log.info("Successfully seeded/updated {} response units in Resource Registry.", seedResources.size());
+        sanitizeResourceData();
+    }
+
+    private void sanitizeResourceData() {
+        log.info("Sanitizing Resource registry statuses to purge invalid values like 'Resolved'...");
+        List<Resource> allResources = resourceRepository.findAll();
+        List<String> validStatuses = Arrays.asList("Available", "En-Route", "On-Scene", "Returning");
+        for (Resource res : allResources) {
+            String st = res.getStatus();
+            boolean isInvalid = st == null || "Resolved".equalsIgnoreCase(st) || "Completed".equalsIgnoreCase(st) || validStatuses.stream().noneMatch(v -> v.equalsIgnoreCase(st));
+            if (isInvalid) {
+                log.info("Correcting invalid resource status for unit {} ({}) from '{}' to 'Available'", res.getId(), res.getName(), st);
+                res.setStatus("Available");
+                res.setAssignedIncidentId(null);
+                resourceRepository.save(res);
+                if (mongoTemplate != null) {
+                    try {
+                        mongoTemplate.save(res, "resources");
+                    } catch (Exception e) {
+                        log.warn("Mongo resource sanitize save notice for {}: {}", res.getId(), e.getMessage());
+                    }
+                }
+            }
+        }
     }
 
     private void seedTaxonomy() {

@@ -14,10 +14,17 @@ function ResponseTeamDashboard() {
     const handleStatusChange = (newStatus) => {
         if (myUnit) {
             updateResourceStatus(myUnit.id, newStatus);
-            if (assignedIncident && newStatus === "Resolved") {
-                updateIncidentStatus(assignedIncident.id, "Resolved");
-            }
         }
+    };
+
+    const handleCompleteMission = () => {
+        if (!myUnit || !assignedIncident) return;
+        const normStatus = (myUnit.status || "").toLowerCase();
+        if (!normStatus.includes("site") && !normStatus.includes("scene") && !normStatus.includes("return")) {
+            alert(`Cannot resolve mission: Unit '${myUnit.name}' is currently '${myUnit.status}'. Field unit must arrive On-Scene before resolving mission.`);
+            return;
+        }
+        updateIncidentStatus(assignedIncident.id, "Resolved");
     };
 
     return (
@@ -55,7 +62,7 @@ function ResponseTeamDashboard() {
                     <span>Update Field Unit Deployment Status</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                     <button
                         onClick={() => handleStatusChange("Available")}
                         style={{
@@ -87,33 +94,49 @@ function ResponseTeamDashboard() {
                     </button>
 
                     <button
-                        onClick={() => handleStatusChange("On-Site")}
+                        onClick={() => handleStatusChange("On-Scene")}
                         style={{
-                            background: myUnit.status === "On-Site" ? '#06b6d4' : '#0f172a',
+                            background: (myUnit.status === "On-Scene" || myUnit.status === "On-Site") ? '#06b6d4' : '#0f172a',
                             color: '#fff',
-                            border: `1px solid ${myUnit.status === "On-Site" ? '#06b6d4' : '#1e293b'}`,
+                            border: `1px solid ${(myUnit.status === "On-Scene" || myUnit.status === "On-Site") ? '#06b6d4' : '#1e293b'}`,
                             padding: '12px',
                             borderRadius: '8px',
                             fontWeight: 700,
                             cursor: 'pointer'
                         }}
                     >
-                        🌊 On-Site Operating
+                        🌊 On-Scene
                     </button>
 
                     <button
-                        onClick={() => handleStatusChange("Resolved")}
+                        onClick={() => handleStatusChange("Returning")}
                         style={{
-                            background: myUnit.status === "Resolved" ? '#8b5cf6' : '#0f172a',
+                            background: myUnit.status === "Returning" ? '#f59e0b' : '#0f172a',
                             color: '#fff',
-                            border: `1px solid ${myUnit.status === "Resolved" ? '#8b5cf6' : '#1e293b'}`,
+                            border: `1px solid ${myUnit.status === "Returning" ? '#f59e0b' : '#1e293b'}`,
                             padding: '12px',
                             borderRadius: '8px',
                             fontWeight: 700,
                             cursor: 'pointer'
                         }}
                     >
-                        ✅ Mission Resolved
+                        🔄 Returning
+                    </button>
+
+                    <button
+                        onClick={handleCompleteMission}
+                        style={{
+                            background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            gridColumn: 'span 2'
+                        }}
+                    >
+                        ✅ Complete Mission & Resolve Incident
                     </button>
                 </div>
             </div>
