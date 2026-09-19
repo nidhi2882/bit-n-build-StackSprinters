@@ -14,6 +14,7 @@ import ResourcesPage from "./pages/ResourcesPage";
 import HospitalsPage from "./pages/HospitalsPage";
 import CitizenReportPage from "./pages/CitizenReportPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import AdminConsolePage from "./pages/AdminConsolePage";
 
 import OperatorDashboard from "./pages/dashboards/OperatorDashboard";
 import ResponseTeamDashboard from "./pages/dashboards/ResponseTeamDashboard";
@@ -62,6 +63,7 @@ function AppLayout() {
                         <Route path="/hospitals" element={<HospitalsPage />} />
                         <Route path="/report" element={<CitizenReportPage />} />
                         <Route path="/analytics" element={<AnalyticsPage />} />
+                        <Route path="/admin" element={<AdminConsolePage />} />
 
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

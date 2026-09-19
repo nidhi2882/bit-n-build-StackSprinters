@@ -23,6 +23,9 @@ public class SecurityRbacIntegrationTest {
     @Autowired
     private JwtTokenProvider tokenProvider;
 
+    @Autowired
+    private com.resqgrid.backend.repository.UserRepository userRepository;
+
     @Test
     void testPublicLoginEndpointAllowed() throws Exception {
         mockMvc.perform(post("/api/auth/login")
@@ -40,12 +43,13 @@ public class SecurityRbacIntegrationTest {
     @Test
     void testProtectedIncidentsEndpointWithValidJwtSucceeds() throws Exception {
         User testUser = User.builder()
-                .id(999L)
                 .name("Integration Test User")
                 .email("admin@resqgrid.org")
+                .password("testpass123")
                 .role("Authority Admin")
                 .authorityId("AUTH-NYC-01")
                 .build();
+        userRepository.save(testUser);
 
         String token = tokenProvider.generateToken(testUser);
 

@@ -43,10 +43,16 @@ public class SecurityConfig {
         http
                 .cors().and()
                 .csrf().disable()
+                .exceptionHandling()
+                .authenticationEntryPoint((request, response, authException) ->
+                        response.sendError(javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+                ).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
                 .authorizeRequests()
                 .antMatchers("/api/auth/**").permitAll()
                 .antMatchers("/api/reports/**").permitAll() // Public citizen ingestion
+                .antMatchers("/api/ingest/**").permitAll()  // Multi-source ingestion (citizen, SOS, IoT sensors)
+                .antMatchers("/api/taxonomy/**").permitAll() // Public emergency taxonomy
                 .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated().and()
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
