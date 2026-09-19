@@ -32,6 +32,9 @@ public class AuthServiceTest {
     @Mock
     private JwtTokenProvider tokenProvider;
 
+    @Mock
+    private com.resqgrid.backend.service.MongoSyncService mongoSyncService;
+
     @InjectMocks
     private AuthService authService;
 

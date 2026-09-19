@@ -14,6 +14,7 @@ import java.util.Optional;
 public class HospitalService {
 
     private final HospitalRepository hospitalRepository;
+    private final MongoSyncService mongoSyncService;
 
     public List<Hospital> getAllHospitals() {
         return hospitalRepository.findAll();
@@ -50,6 +51,8 @@ public class HospitalService {
             hospital.setStatus("Optimal");
         }
 
-        return hospitalRepository.save(hospital);
+        Hospital saved = hospitalRepository.save(hospital);
+        mongoSyncService.syncHospital(saved);
+        return saved;
     }
 }

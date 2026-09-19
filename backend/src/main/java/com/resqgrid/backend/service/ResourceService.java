@@ -14,6 +14,7 @@ import java.util.Optional;
 public class ResourceService {
 
     private final ResourceRepository resourceRepository;
+    private final MongoSyncService mongoSyncService;
 
     public List<Resource> getAllResources() {
         return resourceRepository.findAll();
@@ -36,7 +37,9 @@ public class ResourceService {
         if (resource.getStatus() == null) {
             resource.setStatus("Available");
         }
-        return resourceRepository.save(resource);
+        Resource saved = resourceRepository.save(resource);
+        mongoSyncService.syncResource(saved);
+        return saved;
     }
 
     @Transactional
@@ -47,6 +50,8 @@ public class ResourceService {
         if ("Available".equalsIgnoreCase(newStatus)) {
             resource.setAssignedIncidentId(null);
         }
-        return resourceRepository.save(resource);
+        Resource saved = resourceRepository.save(resource);
+        mongoSyncService.syncResource(saved);
+        return saved;
     }
 }

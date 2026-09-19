@@ -19,6 +19,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final MongoSyncService mongoSyncService;
 
     public Map<String, Object> login(String email, String password, String role) {
         Optional<User> userOpt = userRepository.findByEmail(email);
@@ -37,6 +38,7 @@ public class AuthService {
                     userRepository.save(user);
                 }
             }
+            mongoSyncService.syncUser(user);
         } else {
             // Auto-provision demo user if requested
             String rawPassword = password != null ? password : "password123";
@@ -50,6 +52,7 @@ public class AuthService {
                     .createdAt(LocalDateTime.now())
                     .build();
             user = userRepository.save(user);
+            mongoSyncService.syncUser(user);
         }
 
         // Generate HMAC SHA-256 signed JWT token
@@ -92,6 +95,7 @@ public class AuthService {
         newUser.setPassword(passwordEncoder.encode(rawPassword));
         newUser.setCreatedAt(LocalDateTime.now());
         User saved = userRepository.save(newUser);
+        mongoSyncService.syncUser(saved);
 
         return login(saved.getEmail(), rawPassword, saved.getRole());
     }

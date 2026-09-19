@@ -13,6 +13,7 @@ import java.util.List;
 public class AlertService {
 
     private final AlertRepository alertRepository;
+    private final MongoSyncService mongoSyncService;
 
     public List<Alert> getActiveAlerts() {
         return alertRepository.findByActiveTrueOrderByCreatedAtDesc();
@@ -22,7 +23,8 @@ public class AlertService {
     public void dismissAlert(String alertId) {
         alertRepository.findById(alertId).ifPresent(alert -> {
             alert.setActive(false);
-            alertRepository.save(alert);
+            Alert saved = alertRepository.save(alert);
+            mongoSyncService.syncAlert(saved);
         });
     }
 
@@ -32,6 +34,8 @@ public class AlertService {
             alert.setId("ALT-" + System.currentTimeMillis());
         }
         alert.setActive(true);
-        return alertRepository.save(alert);
+        Alert saved = alertRepository.save(alert);
+        mongoSyncService.syncAlert(saved);
+        return saved;
     }
 }
