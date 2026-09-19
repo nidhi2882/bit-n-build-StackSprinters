@@ -34,7 +34,7 @@ To build a resilient emergency response platform capable of surviving peak disas
 |---|---|---|---|
 | **Backend API** | **Node.js 20 + TypeScript + NestJS 10** | Spring Boot 4.x, Go (Gin), Python (Django) | NestJS provides modular Dependency Injection, decorator-based guards, native Socket.IO WebSocket gateways, and allows **sharing TypeScript types/DTOs across Backend, Web Frontend, and Mobile Apps**. Spring Boot was evaluated, but Node.js TS drastically speeds up rapid iteration and eliminates context-switching. |
 | **AI Microservice** | **Python 3.11 + FastAPI** | Node.js (Brain.js), Java (DL4J) | Python remains non-negotiable for AI/ML due to scikit-learn, PyTorch, sentence-transformers, OpenCV, and Hugging Face. FastAPI provides async non-blocking concurrency and automatic OpenAPI doc generation. |
-| **Database & GIS** | **PostgreSQL 16 + PostGIS 3.4 + pgvector** | MongoDB + GeoJSON, MySQL, Pinecone / Milvus | PostGIS provides military-grade spatial indices (`GIST`) and true GIS functions (`ST_DWithin`, `ST_Distance`). `pgvector` allows storing and querying vector embeddings **inside the same Postgres database**, avoiding the cost and complexity of a separate vector DB. |
+| **Database & GIS** | **MongoDB 7.0+ (Atlas / Local Container)** | PostgreSQL / PostGIS, MySQL, DynamoDB | MongoDB provides native 2Dsphere GeoJSON spatial indexing (`$nearSphere`, `$geoWithin`), schema-less flexibility for chaotic disaster payloads, and native MongoDB Vector Search without standing up a separate vector DB. |
 | **Caching & Queuing** | **Redis 7 + BullMQ** | RabbitMQ, Apache Kafka | Redis serves three critical roles simultaneously: (1) BullMQ background job queue for SLA timers & notifications; (2) WebSocket pub/sub adapter for horizontal scaling; (3) fast in-memory caching of resource locations. |
 | **Real-Time Layer** | **Socket.IO v4** | Pure WebSockets, Server-Sent Events (SSE) | Socket.IO adds auto-reconnection, heartbeat monitoring, fallback transports, and native **room-based multiplexing** matching authority/department boundaries. |
 | **Frontend UI** | **React 19 + TypeScript + Vite + TailwindCSS + shadcn/ui** | Vue 3, Angular, Svelte | Maximum component ecosystem flexibility, rapid styling with Tailwind, accessible primitives via Radix UI (shadcn/ui), and high-performance bundling via Vite. |
@@ -255,14 +255,14 @@ The Python FastAPI microservice (`apps/ai-service`) executes an 8-stage intellig
                                                  │ Severity Level (1-5)
                                                  ↓
                                   ┌───────────────────────────────┐
-                                  │ 3. pgvector Embedding Gen     │
+                                  │ 3. Vector Embedding Gen       │
                                   │ (all-MiniLM-L6-v2, 384-dim)   │
                                   └──────────────┬────────────────┘
                                                  │ Vector Embedding
                                                  ↓
                                   ┌───────────────────────────────┐
                                   │ 4. 3-Signal Duplicate Matcher │
-                                  │ (Geo + Time + Cosine Sim)     │
+                                  │ (Mongo 2Dsphere + Cosine Sim) │
                                   └──────────────┬────────────────┘
                                                  │ Duplicate Found?
                                   ┌──────────────┴──────────────┐
@@ -291,15 +291,15 @@ The Python FastAPI microservice (`apps/ai-service`) executes an 8-stage intellig
 ### 5.1 The 3-Signal Duplicate Matching Algorithm
 
 Two reports $R_1$ and $R_2$ are classified as duplicates if all three thresholds pass:
-1. **Spatial Proximity:** $\text{Distance}(R_1.\text{geom}, R_2.\text{geom}) \le D_{\text{max}}$ (Where $D_{\text{max}} = 500\text{m}$ for urban, $2000\text{m}$ for rural).
+1. **Spatial Proximity:** $\text{Distance}(R_1.\text{geom}, R_2.\text{geom}) \le D_{\text{max}}$ via MongoDB 2Dsphere GeoJSON `$nearSphere` (Where $D_{\text{max}} = 500\text{m}$ for urban, $2000\text{m}$ for rural).
 2. **Temporal Proximity:** $|R_1.\text{timestamp} - R_2.\text{timestamp}| \le T_{\text{max}}$ (Where $T_{\text{max}} = 45\text{ minutes}$).
-3. **Semantic Embedding Similarity:** $\cos(\vec{E}_{R1}, \vec{E}_{R2}) \ge 0.82$.
+3. **Semantic Embedding Similarity:** $\cos(\vec{E}_{R1}, \vec{E}_{R2}) \ge 0.82$ via MongoDB Vector Search.
 
 ### 5.2 Degraded Mode Fallback
 If the Python AI microservice drops offline or times out (> 2000ms), the NestJS backend automatically switches to **Degraded Mode**:
 * **Classification:** Uses keyword-regex dictionary lookup.
 * **Severity:** Uses default severity mapped to the inferred category.
-* **Duplicate Check:** Bypasses vector search; uses PostGIS spatial radius check only.
+* **Duplicate Check:** Bypasses vector search; uses MongoDB GeoJSON 2Dsphere spatial radius check (`$nearSphere`) only.
 * **Result:** Zero system downtime; ingestion completes seamlessly without AI dependency.
 
 ---
@@ -414,8 +414,8 @@ ResQGrid includes seven advanced features that elevate the platform to a state-o
 
 #### Phase 0: Workspace Monorepo & Infrastructure Setup
 * [x] Establish pnpm workspaces monorepo structure (`apps/backend`, `apps/ai-service`, `apps/web`, `apps/mobile`, `packages/shared`).
-* [x] Configure Docker Compose for PostgreSQL 16 + PostGIS 3.4, Redis 7, MinIO, and OSRM.
-* [x] Initialize Prisma schema with base extensions (`postgis`, `vector`).
+* [x] Configure Docker Compose for MongoDB 7.0, Redis 7, MinIO, and OSRM.
+* [x] Initialize MongoDB schema models with 2Dsphere GIS indexes.
 
 #### Phase 1: Authentication, Multi-Tenant Org Model & RBAC/ABAC
 * [x] Implement Argon2id password hashing and dual JWT token (access + refresh) lifecycle.
@@ -435,7 +435,7 @@ ResQGrid includes seven advanced features that elevate the platform to a state-o
 * [x] Implement Degraded Mode fallback engine in NestJS backend.
 
 #### Phase 5: 3-Signal Duplicate Detection & Consolidation
-* [x] Implement PostGIS spatial radius + time-window + pgvector embedding cosine similarity query.
+* [x] Implement MongoDB 2Dsphere spatial radius (`$nearSphere`) + time-window + vector embedding cosine similarity query.
 * [x] Build operator merge/split review queue in Command Center.
 
 #### Phase 6: Resource Registry & Recommendation Engine
@@ -455,7 +455,7 @@ ResQGrid includes seven advanced features that elevate the platform to a state-o
 * [x] Implement critical alert quiet-hours override logic.
 
 #### Phase 10: AI Emergency Copilot (RAG)
-* [x] Implement pgvector chunking and embedding retrieval.
+* [x] Implement MongoDB Vector Search chunking and embedding retrieval.
 * [x] Build Copilot drawer UI in Command Center web app with RBAC-scoped source citation.
 
 #### Phase 11: Scoped Analytics & Spatial Heatmaps

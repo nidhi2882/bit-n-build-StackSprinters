@@ -60,14 +60,14 @@ The table below provides a detailed audit comparing the initial codebase scaffol
 | **Backend API** | Java 21 / Spring Boot 4.x (Partial JPA entities, unverified endpoints) | **Node.js / TypeScript / NestJS** (Modular architecture, DI, native WebSocket Gateway, TypeSafe DTOs) | Replaced scaffold with NestJS monorepo (`apps/backend`) for shared TS types across web & mobile. |
 | **Authentication** | Fake JWT string (`resqgrid-jwt-UUID`), plain-text passwords, no security filters | **Argon2id password hashing + JWT (Short-lived access + rotated refresh tokens)** | Implemented robust AuthModule with Passport.js & bcrypt/argon2. |
 | **RBAC / Security** | Hardcoded role string on `User`; no backend permission enforcement | **CASL Ability-based RBAC + ABAC Guards** matching Authority/Department/Unit scopes | Server-side `@UseGuards(PoliciesGuard)` on every single endpoint + integration tests. |
-| **Database & GIS** | PostgreSQL via `ddl-auto=update` (hand-rolled Haversine distance) | **PostgreSQL 16 + PostGIS + pgvector extension + Prisma ORM** | Spatial spatial queries (`ST_DWithin`, `ST_Distance`), vector embeddings for duplicate matching & RAG. |
+| **Database & GIS** | Relational DB via hand-rolled Haversine distance | **MongoDB 7.0 + Mongoose ODM / Spring Data MongoDB + 2Dsphere GIS** | Document collections for flexible emergency report payloads, GeoJSON spatial queries (`$nearSphere`, `$geoWithin`), MongoDB Vector Search for embeddings. |
 | **AI Microservice** | Empty `ai-service/` folder (`.gitkeep` only) | **Python 3.11 + FastAPI + scikit-learn + sentence-transformers + Anthropic Claude API** | Full AI microservice with NLP classification, severity engine, embedding generation, RAG copilot. |
-| **Duplicate Detection** | Foreign key on schema, zero execution code | **3-Signal Consolidation Engine** (PostGIS Spatial Radius + Time-Window + Cosine Similarity) | Automated clustering and linking of duplicate citizen reports into master incidents. |
+| **Duplicate Detection** | Foreign key on schema, zero execution code | **3-Signal Consolidation Engine** (MongoDB GeoJSON 2Dsphere Radius + Time-Window + Cosine Similarity) | Automated clustering and linking of duplicate citizen reports into master incidents. |
 | **Real-time Engine** | Polling mock data, no WebSockets | **Socket.IO Gateway with Redis Adapter & Scoped Rooms** (`authority:{id}`, `dept:{id}`, etc.) | Instant real-time push to Command Center and Field Team apps without HTTP polling. |
 | **Notifications** | None | **Multi-channel Delivery Engine** (Email via SendGrid, SMS via Twilio, Web Push, Mobile FCM) | Rule-based routing engine with SLA escalation timers via BullMQ. |
 | **Frontend Web** | React 19 + Vite (Mixed mock files & duplicate components) | **React 19 + TypeScript + MapLibre GL JS + TailwindCSS + shadcn/ui + TanStack Query** | Clean modular frontend architecture with unified design system and zero mock code. |
 | **Mobile App** | None | **React Native (Expo)** cross-platform mobile app for Field Teams with offline sync | Live GPS updates, task assignment acceptance, and one-touch status buttons for first responders. |
-| **DevOps / Infra** | Empty `docker/` directory | **Docker Compose monorepo orchestration** (Postgres/PostGIS, Redis, Backend, AI, Frontend, MinIO, OSRM) | One-command local stack execution (`docker compose up`). |
+| **DevOps / Infra** | Empty `docker/` directory | **Docker Compose monorepo orchestration** (MongoDB, Redis, Backend, AI, Frontend, MinIO, OSRM) | One-command local stack execution (`docker compose up`). |
 
 ---
 
@@ -92,12 +92,12 @@ The table below provides a detailed audit comparing the initial codebase scaffol
 │ │ WS Gateway │ │ Escalations │ │ Engine      │ │ Console API│ │  Interceptor    │ │
 │ └────────────┘ └─────────────┘ └─────────────┘ └────────────┘ └─────────────────┘ │
 └───────┬──────────────────────────┬───────────────────┬────────────────────────────┘
-        │ Internal HTTP Async      │ Prisma / SQL      │ Pub/Sub & Queues
+        │ Internal HTTP Async      │ Mongoose / Mongo  │ Pub/Sub & Queues
         ↓                          ↓                   ↓
 ┌──────────────────────┐  ┌───────────────────┐  ┌──────────────────────────────────┐
-│  AI/ML SERVICE       │  │ POSTGRESQL +      │  │ REDIS 7                          │
-│  (Python / FastAPI)  │  │ POSTGIS +         │  │ Cache, BullMQ Jobs,              │
-│  • Classification    │  │ PGVECTOR          │  │ Socket.IO Redis Adapter          │
+│  AI/ML SERVICE       │  │ MONGODB 7.0 +     │  │ REDIS 7                          │
+│  (Python / FastAPI)  │  │ 2DSPHERE GIS +    │  │ Cache, BullMQ Jobs,              │
+│  • Classification    │  │ VECTOR SEARCH     │  │ Socket.IO Redis Adapter          │
 │  • Severity Engine   │  │ Incidents, Geo,   │  └──────────────────────────────────┘
 │  • 3-Signal Dup Dtc  │  │ Embeddings, Audit │  ┌──────────────────────────────────┐
 │  • Vision Analysis   │  └───────────────────┘  │ NOTIFICATION PROVIDERS           │
@@ -122,8 +122,8 @@ The table below provides a detailed audit comparing the initial codebase scaffol
 |---|---|---|
 | **Backend API** | **Node.js + TypeScript (NestJS 10)** | Type-safe modular structure, built-in Dependency Injection, native Socket.IO WebSocket Gateways, seamless sharing of DTOs/types with frontend/mobile. |
 | **AI / ML Microservice** | **Python 3.11 + FastAPI** | Native access to PyTorch, OpenCV, Hugging Face transformers, scikit-learn, sentence-transformers, and LangChain/LlamaIndex. |
-| **Database** | **PostgreSQL 16 + PostGIS 3.4 + pgvector** | Production GIS spatial queries (`ST_DWithin`, `ST_Distance`), spatial indexing (`GIST`), and native vector embedding search on a single unified relational database. |
-| **ORM & Migrations** | **Prisma ORM** | Schema-driven type safety, automated migration management, clean integration with NestJS. |
+| **Database** | **MongoDB 7.0+ (Atlas / Local Container)** | High-throughput document store with native GeoJSON 2Dsphere spatial indexing (`$nearSphere`, `$geoWithin`), schema-less flexibility for unstructured disaster reports, and MongoDB Vector Search. |
+| **ODM / Persistence** | **Spring Data MongoDB / Mongoose ODM** | Type-safe document modeling, 2Dsphere geospatial index creation, automatic timestamping, and seamless NestJS / Spring Boot integration. |
 | **Caching / Queues** | **Redis 7 + BullMQ** | High-throughput distributed caching, SLA delayed escalation timers, async notification queues, and horizontal WebSocket scaling via Redis pub/sub. |
 | **Real-time Transport** | **Socket.IO v4** | Event-driven WebSocket transport with fallback, heartbeat monitoring, and automatic reconnection. Room-based scoping (`authority:{id}`, `dept:{id}`). |
 | **Command Center Web** | **React 19 + TypeScript + Vite + TailwindCSS + shadcn/ui** | Modern, high-performance UI rendering, accessible Radix-based UI components, fast bundle times. |
