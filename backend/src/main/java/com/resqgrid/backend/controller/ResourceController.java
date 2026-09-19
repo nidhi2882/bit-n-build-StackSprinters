@@ -2,7 +2,6 @@ package com.resqgrid.backend.controller;
 
 import com.resqgrid.backend.entity.Resource;
 import com.resqgrid.backend.service.ResourceService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,10 +10,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/resources")
-@RequiredArgsConstructor
 public class ResourceController {
 
     private final ResourceService resourceService;
+
+    public ResourceController(ResourceService resourceService) {
+        this.resourceService = resourceService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Resource>> getAllResources(@RequestParam(required = false) String status) {

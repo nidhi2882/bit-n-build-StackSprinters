@@ -4,7 +4,6 @@ import com.resqgrid.backend.dto.request.*;
 import com.resqgrid.backend.entity.Hospital;
 import com.resqgrid.backend.entity.Incident;
 import com.resqgrid.backend.service.IngestionService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +14,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ingest")
-@RequiredArgsConstructor
 public class IngestionController {
 
     private final IngestionService ingestionService;
+
+    public IngestionController(IngestionService ingestionService) {
+        this.ingestionService = ingestionService;
+    }
 
     /**
      * Public Citizen Web / PWA Report Ingestion

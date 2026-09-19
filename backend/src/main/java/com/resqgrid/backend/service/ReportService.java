@@ -4,7 +4,6 @@ import com.resqgrid.backend.entity.Incident;
 import com.resqgrid.backend.entity.IncidentReport;
 import com.resqgrid.backend.repository.IncidentReportRepository;
 import com.resqgrid.backend.repository.IncidentRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,12 +11,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class ReportService {
 
     private final IncidentReportRepository incidentReportRepository;
     private final IncidentRepository incidentRepository;
     private final IncidentService incidentService;
+
+    public ReportService(IncidentReportRepository incidentReportRepository, IncidentRepository incidentRepository, IncidentService incidentService) {
+        this.incidentReportRepository = incidentReportRepository;
+        this.incidentRepository = incidentRepository;
+        this.incidentService = incidentService;
+    }
 
     public List<IncidentReport> getAllReports() {
         return incidentReportRepository.findAll();

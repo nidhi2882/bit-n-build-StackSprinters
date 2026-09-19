@@ -5,7 +5,6 @@ import com.resqgrid.backend.entity.Resource;
 import com.resqgrid.backend.service.AlertService;
 import com.resqgrid.backend.service.IncidentService;
 import com.resqgrid.backend.service.ResourceService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,12 +17,17 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/analytics")
-@RequiredArgsConstructor
 public class AnalyticsController {
 
     private final IncidentService incidentService;
     private final ResourceService resourceService;
     private final AlertService alertService;
+
+    public AnalyticsController(IncidentService incidentService, ResourceService resourceService, AlertService alertService) {
+        this.incidentService = incidentService;
+        this.resourceService = resourceService;
+        this.alertService = alertService;
+    }
 
     @GetMapping("/overview")
     public ResponseEntity<Map<String, Object>> getOverview() {

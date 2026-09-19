@@ -3,7 +3,6 @@ package com.resqgrid.backend.controller;
 import com.resqgrid.backend.entity.EmergencyCategory;
 import com.resqgrid.backend.entity.EmergencySubType;
 import com.resqgrid.backend.service.TaxonomyService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,10 +11,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/taxonomy")
-@RequiredArgsConstructor
 public class TaxonomyController {
 
     private final TaxonomyService taxonomyService;
+
+    public TaxonomyController(TaxonomyService taxonomyService) {
+        this.taxonomyService = taxonomyService;
+    }
 
     @GetMapping("/categories")
     public ResponseEntity<List<EmergencyCategory>> getCategories() {

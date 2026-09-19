@@ -142,22 +142,46 @@ class NLPClassifier:
                 "summary": "Unspecified emergency incident reported. Default medical triage assigned."
             }
 
-        # Vectorize input and calculate cosine similarity
-        text_vec = self.vectorizer.transform([cleaned])
-        sims = cosine_similarity(text_vec, self.category_vectors)[0]
+        text_lower = cleaned.lower()
 
-        best_idx = int(np.argmax(sims))
-        best_score = float(sims[best_idx])
-        category_id = self.categories[best_idx]
+        # High-Priority Keyword Rules for Emergency Taxonomy Matching
+        forced_category_id = None
+        if any(w in text_lower for w in ["fire", "blaze", "flames", "burning", "smoke", "fire tender", "fire engine", "short circuit fire", "cylinder blast"]):
+            forced_category_id = "CAT_FIRE"
+        elif any(w in text_lower for w in ["flood", "waterlogged", "inundation", "drowning", "marooned", "submerged", "flash flood"]):
+            forced_category_id = "CAT_FLOOD"
+        elif any(w in text_lower for w in ["gas leak", "ammonia", "chlorine", "hazmat", "chemical spill", "acid spill"]):
+            forced_category_id = "CAT_HAZMAT"
+        elif any(w in text_lower for w in ["building collapse", "roof collapse", "wall collapse", "structural collapse"]):
+            forced_category_id = "CAT_COLLAPSE"
+        elif any(w in text_lower for w in ["cardiac", "stroke", "bleeding", "ambulance", "unconscious", "heart attack", "medical"]):
+            forced_category_id = "CAT_MED"
+        elif any(w in text_lower for w in ["crash", "collision", "vehicle accident", "highway accident", "pileup", "overturned truck"]):
+            forced_category_id = "CAT_TRAFFIC"
+        elif any(w in text_lower for w in ["cyclone", "typhoon", "storm", "high winds", "uprooted tree", "power outage", "blackout", "generator"]):
+            forced_category_id = "CAT_STORM"
+        elif any(w in text_lower for w in ["missing person", "search and rescue", "lost hiker", "wilderness search"]):
+            forced_category_id = "CAT_SAR"
+
+        if forced_category_id and forced_category_id in self.categories:
+            category_id = forced_category_id
+            best_score = 0.85
+        else:
+            # Vectorize input and calculate cosine similarity
+            text_vec = self.vectorizer.transform([cleaned])
+            sims = cosine_similarity(text_vec, self.category_vectors)[0]
+            best_idx = int(np.argmax(sims))
+            best_score = float(sims[best_idx])
+            category_id = self.categories[best_idx]
+
         cat_meta = TAXONOMY_CORPUS[category_id]
 
         # Scaled confidence
-        confidence = max(0.72, min(0.98, round(0.70 + (best_score * 0.45), 2)))
+        confidence = max(0.76, min(0.98, round(0.72 + (best_score * 0.30), 2)))
 
         # SubType resolution
         sub_type_id = cat_meta["subTypes"][0]["id"]
         sub_type_name = cat_meta["subTypes"][0]["name"]
-        text_lower = cleaned.lower()
 
         for st in cat_meta["subTypes"]:
             st_kws = st["keywords"].split()

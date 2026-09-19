@@ -1,3 +1,4 @@
+import React from "react";
 import { 
     AlertTriangle, 
     Truck, 
@@ -10,7 +11,8 @@ import {
     Radio,
     PhoneCall,
     Cpu,
-    Zap
+    Zap,
+    GitMerge
 } from "lucide-react";
 import { useEmergency } from "../context/EmergencyContext";
 import MapView from "../components/map/MapView";
@@ -20,10 +22,12 @@ import IncidentDetailModal from "../components/incidents/IncidentDetailModal";
 import NewIncidentModal from "../components/incidents/NewIncidentModal";
 import AICopilotDrawer from "../components/ai/AICopilotDrawer";
 import CallCenterIngestionModal from "../components/modals/CallCenterIngestionModal";
+import DuplicateReviewModal from "../components/modals/DuplicateReviewModal";
 import IoTSensorSimulator from "../components/common/IoTSensorSimulator";
 
 function CommandCenter() {
     const [callCenterModalOpen, setCallCenterModalOpen] = React.useState(false);
+    const [duplicateModalOpen, setDuplicateModalOpen] = React.useState(false);
     const { 
         incidents, 
         resources, 
@@ -114,6 +118,26 @@ function CommandCenter() {
                 </div>
 
                 <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                        onClick={() => setDuplicateModalOpen(true)}
+                        style={{
+                            background: "#0f172a",
+                            border: "1px solid #3b82f6",
+                            color: "#93c5fd",
+                            padding: "8px 14px",
+                            borderRadius: "8px",
+                            fontWeight: 700,
+                            fontSize: "0.82rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px"
+                        }}
+                    >
+                        <GitMerge size={15} style={{ color: '#3b82f6' }} />
+                        <span>Duplicate Review Queue</span>
+                    </button>
+
                     <button
                         onClick={() => setCallCenterModalOpen(true)}
                         style={{
@@ -234,6 +258,10 @@ function CommandCenter() {
                 isOpen={callCenterModalOpen} 
                 onClose={() => setCallCenterModalOpen(false)} 
                 onIncidentCreated={(inc) => addNewIncident(inc)}
+            />
+            <DuplicateReviewModal
+                isOpen={duplicateModalOpen}
+                onClose={() => setDuplicateModalOpen(false)}
             />
             <IncidentDetailModal />
             <NewIncidentModal />
