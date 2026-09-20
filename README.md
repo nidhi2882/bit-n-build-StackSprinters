@@ -7,7 +7,18 @@
 
 ---
 
+## 🎥 Demo Video & Presentation
+
+▶️ **[Watch the ResQGrid demo](https://drive.google.com/file/d/1tI2c5Tru0btmVy3gLObA89w8CJBl0HKi/view?usp=sharing)**
+
+📊 **[View the pitch presentation (PPT)](https://docs.google.com/presentation/d/1XqqpVk9L0gO5S2kl14o8TphuRRGo4tC2/edit?usp=sharing&ouid=108215591275858216197&rtpof=true&sd=true)**
+
+A full walkthrough of the platform — citizen reporting, AI-assisted triage, department dispatch, the real-time incident lifecycle, and the command analytics console.
+
+---
+
 ## 📋 Table of Contents
+0. [Demo Video & Presentation](#-demo-video--presentation)
 1. [Executive Summary & Vision](#1-executive-summary--vision)
 2. [The Core Problem (PS-9 Context)](#2-the-core-problem-ps-9-context)
 3. [Scaffold Audit vs. Production Target](#3-scaffold-audit-vs-production-target)

@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="900" viewBox="0 0 1240 900" font-family="Segoe UI, Roboto, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <marker id="fa" markerWidth="12" markerHeight="12" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3.5 L0,7 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{fill:#f8fafc;font-size:30px;font-weight:700}
+      .sub{fill:#94a3b8;font-size:15px}
+      .n-t{fill:#f8fafc;font-size:15px;font-weight:700}
+      .n-s{fill:#e2e8f0;font-size:12px}
+      .edge{stroke:#64748b;stroke-width:2;fill:none}
+      .elbl{fill:#cbd5e1;font-size:11.5px}
+      .lane{fill:#93c5fd;font-size:13px;font-weight:700;letter-spacing:2px}
+    </style>
+  </defs>
+  <rect width="1240" height="900" fill="url(#bg3)"/>
+  <text x="60" y="52" class="title">ResQGrid — Website &amp; User Flow</text>
+  <text x="60" y="78" class="sub">Authentication, role routing and the incident lifecycle across citizen, department and command roles</text>
+
+  <!-- ENTRY -->
+  <rect x="520" y="110" width="200" height="60" rx="30" fill="#1e40af" stroke="#60a5fa"/>
+  <text x="620" y="140" class="n-t" text-anchor="middle">Landing / Login</text>
+  <text x="620" y="158" class="n-s" text-anchor="middle">email + password → JWT</text>
+
+  <!-- AUTH -->
+  <rect x="500" y="210" width="240" height="60" rx="12" fill="#0b3b3b" stroke="#14b8a6"/>
+  <text x="620" y="238" class="n-t" text-anchor="middle">AuthService validates</text>
+  <text x="620" y="256" class="n-s" text-anchor="middle">issues JWT · returns role + departmentCategory</text>
+  <path class="edge" d="M620,170 L620,210" marker-end="url(#fa)"/>
+
+  <text x="60" y="320" class="lane">ROLE-BASED ROUTING</text>
+  <path class="edge" d="M620,270 L620,300 L200,300 L200,340" marker-end="url(#fa)"/>
+  <path class="edge" d="M620,300 L620,340" marker-end="url(#fa)"/>
+  <path class="edge" d="M620,300 L1040,300 L1040,340" marker-end="url(#fa)"/>
+
+  <!-- CITIZEN -->
+  <rect x="80" y="340" width="240" height="72" rx="12" fill="#164e63" stroke="#22d3ee"/>
+  <text x="200" y="368" class="n-t" text-anchor="middle">CITIZEN</text>
+  <text x="200" y="388" class="n-s" text-anchor="middle">Citizen home / report portal</text>
+  <text x="200" y="404" class="n-s" text-anchor="middle">reports own incidents + SOS</text>
+
+  <!-- DEPT ADMIN -->
+  <rect x="500" y="340" width="240" height="72" rx="12" fill="#0f2a20" stroke="#34d399"/>
+  <text x="620" y="368" class="n-t" text-anchor="middle">DEPARTMENT ADMIN (×9)</text>
+  <text x="620" y="388" class="n-s" text-anchor="middle">locked to own category console</text>
+  <text x="620" y="404" class="n-s" text-anchor="middle">Flood · Fire · Medical · Crash · Hazmat …</text>
+
+  <!-- SUPER ADMIN -->
+  <rect x="920" y="340" width="240" height="72" rx="12" fill="#3b0764" stroke="#c084fc"/>
+  <text x="1040" y="368" class="n-t" text-anchor="middle">SUPER ADMIN</text>
+  <text x="1040" y="388" class="n-s" text-anchor="middle">all departments + analytics</text>
+  <text x="1040" y="404" class="n-s" text-anchor="middle">switch sectors · mass alerts</text>
+
+  <!-- INCIDENT LIFECYCLE -->
+  <text x="60" y="472" class="lane">INCIDENT LIFECYCLE (dynamic, real-time)</text>
+  <path class="edge" d="M200,412 L200,452 L150,452 L150,500" marker-end="url(#fa)"/>
+  <text x="90" y="486" class="elbl">citizen submits</text>
+
+  <rect x="60" y="500" width="180" height="72" rx="12" fill="#1e293b" stroke="#f87171"/>
+  <text x="150" y="528" class="n-t" text-anchor="middle">1 · Reported</text>
+  <text x="150" y="548" class="n-s" text-anchor="middle">auto-routed to dept</text>
+  <text x="150" y="564" class="n-s" text-anchor="middle">alert + activity logged</text>
+
+  <rect x="290" y="500" width="180" height="72" rx="12" fill="#1e293b" stroke="#fbbf24"/>
+  <text x="380" y="528" class="n-t" text-anchor="middle">2 · Assigned</text>
+  <text x="380" y="548" class="n-s" text-anchor="middle">unit dispatched</text>
+  <text x="380" y="564" class="n-s" text-anchor="middle">assignedUnitId set</text>
+
+  <rect x="520" y="500" width="180" height="72" rx="12" fill="#1e293b" stroke="#60a5fa"/>
+  <text x="610" y="528" class="n-t" text-anchor="middle">3 · En-Route</text>
+  <text x="610" y="548" class="n-s" text-anchor="middle">resource status synced</text>
+  <text x="610" y="564" class="n-s" text-anchor="middle">SLA countdown live</text>
+
+  <rect x="750" y="500" width="180" height="72" rx="12" fill="#1e293b" stroke="#a78bfa"/>
+  <text x="840" y="528" class="n-t" text-anchor="middle">4 · On-Scene</text>
+  <text x="840" y="548" class="n-s" text-anchor="middle">unit arrived</text>
+  <text x="840" y="564" class="n-s" text-anchor="middle">timeline updated</text>
+
+  <rect x="980" y="500" width="180" height="72" rx="12" fill="#052e2b" stroke="#34d399"/>
+  <text x="1070" y="528" class="n-t" text-anchor="middle">5 · Resolved</text>
+  <text x="1070" y="548" class="n-s" text-anchor="middle">units freed · alerts cleared</text>
+  <text x="1070" y="564" class="n-s" text-anchor="middle">moves to completed</text>
+
+  <path class="edge" d="M240,536 L290,536" marker-end="url(#fa)"/>
+  <path class="edge" d="M470,536 L520,536" marker-end="url(#fa)"/>
+  <path class="edge" d="M700,536 L750,536" marker-end="url(#fa)"/>
+  <path class="edge" d="M930,536 L980,536" marker-end="url(#fa)"/>
+
+  <!-- cross links -->
+  <path class="edge" d="M620,412 L620,452 L150,452 L150,500" marker-end="url(#fa)"/>
+  <text x="360" y="446" class="elbl">dept admin manages CAD queue</text>
+
+  <!-- SUPPORTING FLOWS -->
+  <text x="60" y="632" class="lane">SUPPORTING FLOWS</text>
+
+  <rect x="60" y="650" width="270" height="86" rx="12" fill="#111c33" stroke="#3b82f6"/>
+  <text x="80" y="678" class="n-t">AI Copilot &amp; Triage</text>
+  <text x="80" y="700" class="n-s">Gemini RAG answers · SOP guidance</text>
+  <text x="80" y="718" class="n-s">NLP classify · severity · duplicates</text>
+
+  <rect x="350" y="650" width="270" height="86" rx="12" fill="#0f2a20" stroke="#10b981"/>
+  <text x="370" y="678" class="n-t">Cross-Dept Mutual Aid</text>
+  <text x="370" y="700" class="n-s">request → target admin notified</text>
+  <text x="370" y="718" class="n-s">accept &amp; dispatch · decline · resolve</text>
+
+  <rect x="640" y="650" width="270" height="86" rx="12" fill="#2b1a08" stroke="#f59e0b"/>
+  <text x="660" y="678" class="n-t">Notifications</text>
+  <text x="660" y="700" class="n-s">category-scoped alerts · 60s auto-refresh</text>
+  <text x="660" y="718" class="n-s">resolve clears them · clear-all option</text>
+
+  <rect x="930" y="650" width="250" height="86" rx="12" fill="#20143a" stroke="#a78bfa"/>
+  <text x="950" y="678" class="n-t">Analytics &amp; SLA</text>
+  <text x="950" y="700" class="n-s">live charts · response percentiles</text>
+  <text x="950" y="718" class="n-s">SLA breach auto-escalation</text>
+
+  <path class="edge" d="M620,412 L620,620 L195,620 L195,650" marker-end="url(#fa)"/>
+  <path class="edge" d="M1040,412 L1040,620 L1055,620 L1055,650" marker-end="url(#fa)"/>
+
+  <text x="60" y="800" class="sub">Backend enforces role scoping on every request — department admins can only read/act on incidents in their own category; Super Admin sees all.</text>
+  <text x="60" y="824" class="sub">Realtime updates flow over WebSocket/STOMP and 8–60s polling so status transitions, dispatches and notifications reflect live.</text>
+</svg>

@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" font-family="Segoe UI, Roboto, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="client" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e3a8a"/><stop offset="1" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="backend" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#065f46"/><stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="ai" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c2d12"/><stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="data" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b21b6"/><stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .title{fill:#f8fafc;font-size:30px;font-weight:700}
+      .sub{fill:#94a3b8;font-size:15px}
+      .lane{fill:#e2e8f0;font-size:15px;font-weight:700;letter-spacing:2px}
+      .card-t{fill:#f8fafc;font-size:17px;font-weight:700}
+      .card-s{fill:#dbeafe;font-size:12.5px}
+      .edge{stroke:#94a3b8;stroke-width:2;fill:none}
+      .edgelbl{fill:#cbd5e1;font-size:12px}
+      .pill{fill:#f1f5f9;font-size:12px;font-weight:600}
+    </style>
+  </defs>
+
+  <rect width="1200" height="820" fill="url(#bg)"/>
+  <text x="60" y="52" class="title">ResQGrid — System Architecture</text>
+  <text x="60" y="78" class="sub">Emergency response &amp; disaster-management command platform (PS-9)</text>
+
+  <!-- CLIENT LAYER -->
+  <text x="60" y="128" class="lane">CLIENT LAYER</text>
+  <rect x="60" y="140" width="320" height="150" rx="14" fill="url(#client)" stroke="#3b82f6" stroke-opacity="0.5"/>
+  <text x="80" y="172" class="card-t">React 18 + Vite SPA</text>
+  <text x="80" y="198" class="card-s">Role dashboards: Super Admin • 9 Dept Admins • Citizen</text>
+  <text x="80" y="218" class="card-s">Tailwind UI • React Router • Axios client</text>
+  <text x="80" y="238" class="card-s">CAD console, GIS map, analytics charts</text>
+  <text x="80" y="258" class="card-s">AI Copilot drawer • Notification panel (60s poll)</text>
+  <text x="80" y="278" class="card-s">STOMP / WebSocket live telemetry</text>
+
+  <rect x="410" y="140" width="230" height="150" rx="14" fill="url(#client)" stroke="#3b82f6" stroke-opacity="0.5"/>
+  <text x="430" y="172" class="card-t">Citizen Portal</text>
+  <text x="430" y="198" class="card-s">Public incident reporting</text>
+  <text x="430" y="218" class="card-s">One-tap SOS</text>
+  <text x="430" y="238" class="card-s">Live status timeline</text>
+  <text x="430" y="258" class="card-s">Report tracking by ID</text>
+
+  <!-- SECURITY / GATEWAY -->
+  <rect x="700" y="140" width="440" height="150" rx="14" fill="#0b3b3b" stroke="#14b8a6" stroke-opacity="0.5"/>
+  <text x="720" y="172" class="card-t">Security &amp; Access</text>
+  <text x="720" y="198" class="card-s">JWT (HMAC SHA-256) auth • Spring Security</text>
+  <text x="720" y="218" class="card-s">Stateless sessions • BCrypt password hashing</text>
+  <text x="720" y="238" class="card-s">Role-scoped data: dept admins see only their category</text>
+  <text x="720" y="258" class="card-s">CORS • request interceptors • 401 handling</text>
+  <text x="720" y="278" class="card-s">3 roles · 9 department categories</text>
+
+  <!-- BACKEND LAYER -->
+  <text x="60" y="352" class="lane">APPLICATION / BACKEND LAYER — Spring Boot 2.7 (Java 17)</text>
+  <rect x="60" y="366" width="1080" height="188" rx="14" fill="url(#backend)" stroke="#10b981" stroke-opacity="0.4"/>
+
+  <g>
+    <rect x="82" y="392" width="200" height="66" rx="10" fill="#064e3b" stroke="#34d399" stroke-opacity="0.4"/>
+    <text x="96" y="418" class="card-t">Controllers</text>
+    <text x="96" y="440" class="card-s">Auth, Incident, Resource,</text>
+    <text x="96" y="456" class="card-s">ServiceRequest, Alert, Analytics</text>
+
+    <rect x="300" y="392" width="220" height="66" rx="10" fill="#064e3b" stroke="#34d399" stroke-opacity="0.4"/>
+    <text x="314" y="418" class="card-t">Domain Services</text>
+    <text x="314" y="440" class="card-s">IncidentService, DeptRouting,</text>
+    <text x="314" y="456" class="card-s">ServiceRequest, SLA escalation</text>
+
+    <rect x="538" y="392" width="200" height="66" rx="10" fill="#064e3b" stroke="#34d399" stroke-opacity="0.4"/>
+    <text x="552" y="418" class="card-t">Realtime Engine</text>
+    <text x="552" y="440" class="card-s">WebSocket / STOMP broker</text>
+    <text x="552" y="456" class="card-s">Event publisher, alerts</text>
+
+    <rect x="756" y="392" width="180" height="66" rx="10" fill="#064e3b" stroke="#34d399" stroke-opacity="0.4"/>
+    <text x="770" y="418" class="card-t">Schedulers</text>
+    <text x="770" y="440" class="card-s">SLA breach monitor</text>
+    <text x="770" y="456" class="card-s">Auto-escalation worker</text>
+
+    <rect x="952" y="392" width="166" height="66" rx="10" fill="#064e3b" stroke="#34d399" stroke-opacity="0.4"/>
+    <text x="966" y="418" class="card-t">AI Client</text>
+    <text x="966" y="440" class="card-s">Calls Python</text>
+    <text x="966" y="456" class="card-s">AI microservice</text>
+
+    <rect x="82" y="474" width="1036" height="62" rx="10" fill="#053e30" stroke="#34d399" stroke-opacity="0.35"/>
+    <text x="96" y="500" class="card-t">Repositories (Spring Data JPA)</text>
+    <text x="96" y="522" class="card-s">Incident • Resource • ServiceRequest • Alert • User • IncidentActivity • ResourceAssignment • Taxonomy — with MongoSync mirroring</text>
+  </g>
+
+  <!-- AI SERVICE -->
+  <text x="60" y="608" class="lane">AI MICROSERVICE — Python FastAPI (port 5000)</text>
+  <rect x="60" y="620" width="640" height="150" rx="14" fill="url(#ai)" stroke="#f59e0b" stroke-opacity="0.45"/>
+  <text x="80" y="652" class="card-t">ResQGrid AI Engine</text>
+  <text x="80" y="678" class="card-s">NLP incident classifier • Hybrid severity scoring</text>
+  <text x="80" y="698" class="card-s">Duplicate consolidation (spatial + temporal + semantic)</text>
+  <text x="80" y="718" class="card-s">RAG Copilot — Gemini (gemini-flash-latest)</text>
+  <text x="80" y="738" class="card-s">Grounded deterministic fallback + SOP vector store</text>
+  <text x="80" y="758" class="card-s">Domain guardrails • provider auto-detect (Gemini/Groq/OpenAI)</text>
+
+  <!-- DATA LAYER -->
+  <text x="730" y="608" class="lane">DATA LAYER</text>
+  <rect x="730" y="620" width="410" height="70" rx="12" fill="url(#data)" stroke="#a78bfa" stroke-opacity="0.5"/>
+  <text x="750" y="650" class="card-t">H2 (in-memory, PostgreSQL mode)</text>
+  <text x="750" y="674" class="card-s">Primary relational store • seeded on startup</text>
+
+  <rect x="730" y="700" width="410" height="70" rx="12" fill="url(#data)" stroke="#a78bfa" stroke-opacity="0.5"/>
+  <text x="750" y="730" class="card-t">MongoDB Atlas (optional sync)</text>
+  <text x="750" y="754" class="card-s">Cloud mirror for incidents, users, resources, alerts</text>
+
+  <!-- EDGES -->
+  <path class="edge" d="M220,290 L220,366" marker-end="url(#arrow)"/>
+  <text x="230" y="330" class="edgelbl">HTTPS / REST + JWT</text>
+  <path class="edge" d="M525,290 L525,366" marker-end="url(#arrow)"/>
+  <path class="edge" d="M920,290 L600,360" marker-end="url(#arrow)"/>
+  <text x="740" y="322" class="edgelbl">verifies token</text>
+
+  <path class="edge" d="M1035,458 L1035,560 L560,560 L360,620" marker-end="url(#arrow)"/>
+  <text x="700" y="576" class="edgelbl">REST: classify / severity / copilot / duplicates</text>
+
+  <path class="edge" d="M600,536 L600,560 L820,560 L900,620" marker-end="url(#arrow)"/>
+  <text x="640" y="600" class="edgelbl">JDBC + Mongo template</text>
+  <path class="edge" d="M935,560 L935,620" marker-end="url(#arrow)"/>
+
+  <!-- footer pills -->
+  <rect x="60" y="792" width="140" height="22" rx="11" fill="#1e293b"/><text x="130" y="807" class="pill" text-anchor="middle">React · Vite</text>
+  <rect x="212" y="792" width="150" height="22" rx="11" fill="#1e293b"/><text x="287" y="807" class="pill" text-anchor="middle">Spring Boot · JPA</text>
+  <rect x="374" y="792" width="150" height="22" rx="11" fill="#1e293b"/><text x="449" y="807" class="pill" text-anchor="middle">FastAPI · Gemini</text>
+  <rect x="536" y="792" width="150" height="22" rx="11" fill="#1e293b"/><text x="611" y="807" class="pill" text-anchor="middle">H2 · MongoDB</text>
+  <rect x="698" y="792" width="150" height="22" rx="11" fill="#1e293b"/><text x="773" y="807" class="pill" text-anchor="middle">JWT · WebSocket</text>
+</svg>
