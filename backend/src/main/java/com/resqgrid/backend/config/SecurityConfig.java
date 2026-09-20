@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .antMatchers("/api/reports/**").permitAll() // Public citizen ingestion
                 .antMatchers("/api/ingest/**").permitAll()  // Multi-source ingestion (citizen, SOS, IoT sensors)
                 .antMatchers("/api/taxonomy/**").permitAll() // Public emergency taxonomy
+                .antMatchers("/api/telemetry/**").permitAll() // Real-time telemetry pings
+                .antMatchers("/ws/**").permitAll()           // WebSocket STOMP endpoint
                 .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated().and()
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
