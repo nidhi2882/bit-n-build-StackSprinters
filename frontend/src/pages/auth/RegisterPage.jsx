@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShieldAlert, UserPlus, Lock, Mail, User, Building, Truck } from "lucide-react";
+import { ShieldAlert, UserPlus, Lock, Mail, User, Building, Truck, AlertTriangle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 function RegisterPage() {
@@ -16,10 +16,12 @@ function RegisterPage() {
         hospitalId: ""
     });
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setErrorMsg("");
         try {
             const registeredUser = await register(form);
             switch (registeredUser.role) {
@@ -40,7 +42,7 @@ function RegisterPage() {
                     break;
             }
         } catch (err) {
-            console.error(err);
+            setErrorMsg(err.message || "Registration failed. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -60,6 +62,24 @@ function RegisterPage() {
                         Register user account with role-based command privileges
                     </p>
                 </div>
+
+                {errorMsg && (
+                    <div style={{
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        border: '1px solid #ef4444',
+                        color: '#f87171',
+                        padding: '12px 14px',
+                        borderRadius: '8px',
+                        fontSize: '0.88rem',
+                        marginBottom: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                    }}>
+                        <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                        <span>{errorMsg}</span>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div>

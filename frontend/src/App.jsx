@@ -20,12 +20,18 @@ import OperatorDashboard from "./pages/dashboards/OperatorDashboard";
 import ResponseTeamDashboard from "./pages/dashboards/ResponseTeamDashboard";
 import HospitalDashboard from "./pages/dashboards/HospitalDashboard";
 import AuthorityDashboard from "./pages/dashboards/AuthorityDashboard";
+import SuperAdminDashboard from "./pages/dashboards/SuperAdminDashboard";
+import DepartmentAdminDashboard from "./pages/dashboards/DepartmentAdminDashboard";
 
 function MainDashboard() {
     const { user } = useAuth();
     const role = user?.role || "Emergency Operator";
 
     switch (role) {
+        case "Super Admin":
+            return <SuperAdminDashboard />;
+        case "Department Admin":
+            return <DepartmentAdminDashboard />;
         case "Response Team":
             return <ResponseTeamDashboard />;
         case "Hospital Admin":
@@ -52,18 +58,46 @@ function AppLayout() {
                         <Route path="/" element={<MainDashboard />} />
                         
                         {/* Dedicated Role Dashboard Views */}
-                        <Route path="/operator-dashboard" element={<OperatorDashboard />} />
-                        <Route path="/response-dashboard" element={<ResponseTeamDashboard />} />
-                        <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
-                        <Route path="/authority-dashboard" element={<AuthorityDashboard />} />
+                        <Route path="/operator-dashboard" element={
+                            <ProtectedRoute allowedRoles={["Emergency Operator", "Authority Admin", "Super Admin"]}>
+                                <OperatorDashboard />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/response-dashboard" element={
+                            <ProtectedRoute allowedRoles={["Response Team", "Authority Admin", "Emergency Operator", "Super Admin"]}>
+                                <ResponseTeamDashboard />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/hospital-dashboard" element={
+                            <ProtectedRoute allowedRoles={["Hospital Admin", "Authority Admin", "Emergency Operator", "Super Admin"]}>
+                                <HospitalDashboard />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/authority-dashboard" element={
+                            <ProtectedRoute allowedRoles={["Authority Admin", "Emergency Operator", "Super Admin"]}>
+                                <AuthorityDashboard />
+                            </ProtectedRoute>
+                        } />
 
-                        {/* Global Network Views */}
+                        {/* Network Views */}
                         <Route path="/incidents" element={<IncidentsPage />} />
-                        <Route path="/resources" element={<ResourcesPage />} />
+                        <Route path="/resources" element={
+                            <ProtectedRoute allowedRoles={["Response Team", "Emergency Operator", "Authority Admin", "Hospital Admin", "Super Admin"]}>
+                                <ResourcesPage />
+                            </ProtectedRoute>
+                        } />
                         <Route path="/hospitals" element={<HospitalsPage />} />
                         <Route path="/report" element={<CitizenReportPage />} />
-                        <Route path="/analytics" element={<AnalyticsPage />} />
-                        <Route path="/admin" element={<AdminConsolePage />} />
+                        <Route path="/analytics" element={
+                            <ProtectedRoute allowedRoles={["Authority Admin", "Emergency Operator", "Super Admin"]}>
+                                <AnalyticsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/admin" element={
+                            <ProtectedRoute allowedRoles={["Authority Admin", "Emergency Operator", "Super Admin"]}>
+                                <AdminConsolePage />
+                            </ProtectedRoute>
+                        } />
 
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
@@ -81,7 +115,11 @@ function AppContent() {
             <Route path="/register" element={<RegisterPage />} />
 
             {/* Application Routes with Main Shell Layout */}
-            <Route path="/*" element={<AppLayout />} />
+            <Route path="/*" element={
+                <ProtectedRoute>
+                    <AppLayout />
+                </ProtectedRoute>
+            } />
         </Routes>
     );
 }

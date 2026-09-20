@@ -7,8 +7,8 @@ import java.util.List;
 
 @Repository
 public interface IncidentRepository extends JpaRepository<Incident, String> {
-    List<Incident> findByTypeIgnoreCase(String type);
-    List<Incident> findByStatusIgnoreCase(String status);
-    List<Incident> findBySeverityGreaterThanEqual(Integer severity);
+    List<Incident> findByReporterEmailOrderByReportedAtDesc(String reporterEmail);
+    List<Incident> findByTypeIgnoreCaseInOrderByReportedAtDesc(List<String> types);
+    List<Incident> findByAssignedResourceIdsContainingOrderByReportedAtDesc(String unitId);
     List<Incident> findAllByOrderByReportedAtDesc();
 }

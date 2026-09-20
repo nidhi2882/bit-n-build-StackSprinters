@@ -4,6 +4,8 @@ import com.resqgrid.backend.entity.Incident;
 import com.resqgrid.backend.service.IncidentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.resqgrid.backend.security.UserPrincipal;
 
 import java.util.List;
 import java.util.Map;
@@ -19,7 +21,10 @@ public class IncidentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Incident>> getAllIncidents() {
+    public ResponseEntity<List<Incident>> getAllIncidents(@AuthenticationPrincipal UserPrincipal currentUser) {
+        if (currentUser != null) {
+            return ResponseEntity.ok(incidentService.getScopedIncidents(currentUser));
+        }
         return ResponseEntity.ok(incidentService.getAllIncidents());
     }
 
@@ -31,8 +36,27 @@ public class IncidentController {
     }
 
     @PostMapping
-    public ResponseEntity<Incident> createIncident(@RequestBody Incident incident) {
+    public ResponseEntity<Incident> createIncident(@RequestBody Incident incident, @AuthenticationPrincipal UserPrincipal currentUser) {
+        if (currentUser != null) {
+            if (incident.getReporterEmail() == null || incident.getReporterEmail().trim().isEmpty()) {
+                incident.setReporterEmail(currentUser.getEmail());
+            }
+            if (incident.getReporterRole() == null || incident.getReporterRole().trim().isEmpty()) {
+                incident.setReporterRole(currentUser.getRole());
+            }
+        }
         return ResponseEntity.ok(incidentService.createIncident(incident));
+    }
+
+    @PostMapping("/{id}/reclassify")
+    public ResponseEntity<Incident> reclassifyIncident(@PathVariable String id, @RequestBody Map<String, String> payload) {
+        String newCategory = payload.get("newCategory");
+        return ResponseEntity.ok(incidentService.reclassifyIncident(id, newCategory));
+    }
+
+    @PostMapping("/{id}/escalate")
+    public ResponseEntity<Incident> escalateIncident(@PathVariable String id) {
+        return ResponseEntity.ok(incidentService.escalateIncident(id));
     }
 
     @PatchMapping("/{id}/status")

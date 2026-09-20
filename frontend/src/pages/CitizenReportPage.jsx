@@ -388,6 +388,63 @@ function CitizenReportPage() {
                     </button>
                 </form>
             )}
+
+            {/* My Reported Emergencies & Live Status Tracking Panel */}
+            <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Radio size={18} style={{ color: '#10b981' }} />
+                        <span>My Reported Emergencies & Live Status Tracking</span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#a7f3d0', background: 'rgba(16,185,129,0.15)', padding: '2px 8px', borderRadius: '6px' }}>
+                        Real-Time Tracking Active
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {useEmergency().incidents.length > 0 ? (
+                        useEmergency().incidents.slice(0, 3).map((inc) => (
+                            <div key={inc.id} style={{ background: '#0b1120', border: '1px solid #1e293b', padding: '14px', borderRadius: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff' }}>{inc.title}</span>
+                                    <span className={`status-pill ${inc.status}`}>{inc.status}</span>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                    <MapPin size={14} color="#ef4444" />
+                                    <span>{inc.locationName}</span>
+                                </div>
+
+                                {/* Status Progress Timeline */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', fontSize: '0.72rem', color: '#64748b' }}>
+                                    <span style={{ color: '#10b981', fontWeight: 700 }}>✓ Reported</span> → 
+                                    <span style={{ color: inc.status !== "Reported" ? '#10b981' : '#64748b', fontWeight: 700 }}>✓ AI Classified</span> → 
+                                    <span style={{ color: (inc.status === "En-Route" || inc.status === "On-Scene" || inc.status === "Resolved") ? '#3b82f6' : '#64748b', fontWeight: 700 }}>
+                                        {inc.status === "En-Route" ? "🔵 En-Route" : "Unit Assigned"}
+                                    </span> → 
+                                    <span style={{ color: inc.status === "Resolved" ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                                        {inc.status === "Resolved" ? "✅ Mission Resolved" : "On-Scene / Resolved"}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '0.85rem' }}>
+                            No active emergency reports submitted yet.
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Active Public Safety Broadcast Advisories */}
+            <div className="card" style={{ padding: '20px', background: '#0b1120', border: '1px solid #1e293b' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#fff', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertCircle size={16} style={{ color: '#eab308' }} />
+                    <span>Public Safety Area Warnings & Broadcast Advisories</span>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                    📢 <strong>Vadodara District Warning:</strong> Heavy flash flood warning active near Vishwamitri River. Citizens in low-lying Akota and Subhanpura areas are advised to stay indoors or move to safer shelter nodes.
+                </div>
+            </div>
         </div>
     );
 }

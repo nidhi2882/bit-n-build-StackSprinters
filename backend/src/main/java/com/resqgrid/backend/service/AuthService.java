@@ -27,38 +27,30 @@ public class AuthService {
     }
 
     public Map<String, Object> login(String email, String password, String role) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-
-        User user;
-        if (userOpt.isPresent()) {
-            user = userOpt.get();
-            // Verify password using BCrypt
-            if (password != null && !password.isEmpty()) {
-                if (!passwordEncoder.matches(password, user.getPassword()) && !password.equals(user.getPassword())) {
-                    throw new IllegalArgumentException("Invalid email or password");
-                }
-                // If stored in plain text from earlier scaffold, re-encode with BCrypt
-                if (!user.getPassword().startsWith("$2a$")) {
-                    user.setPassword(passwordEncoder.encode(password));
-                    userRepository.save(user);
-                }
-            }
-            mongoSyncService.syncUser(user);
-        } else {
-            // Auto-provision demo user if requested
-            String rawPassword = password != null ? password : "password123";
-            user = User.builder()
-                    .name(email.contains("@") ? email.substring(0, email.indexOf("@")) : "Operator")
-                    .email(email)
-                    .password(passwordEncoder.encode(rawPassword))
-                    .role(role != null ? role : "Emergency Operator")
-                    .organization("Emergency Operations Center")
-                    .authorityId("AUTH-NYC-01")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            user = userRepository.save(user);
-            mongoSyncService.syncUser(user);
+        if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Invalid email or password");
         }
+
+        Optional<User> userOpt = userRepository.findByEmail(email.trim());
+        if (!userOpt.isPresent()) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        User user = userOpt.get();
+        boolean matchesEncoded = passwordEncoder.matches(password, user.getPassword());
+        boolean matchesPlain = password.equals(user.getPassword());
+
+        if (!matchesEncoded && !matchesPlain) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        // If stored in plain text, upgrade to BCrypt hash
+        if (!user.getPassword().startsWith("$2a$")) {
+            user.setPassword(passwordEncoder.encode(password));
+            userRepository.save(user);
+        }
+
+        mongoSyncService.syncUser(user);
 
         // Generate HMAC SHA-256 signed JWT token
         String token = tokenProvider.generateToken(user);
@@ -88,15 +80,27 @@ public class AuthService {
     }
 
     public Map<String, Object> register(User newUser) {
-        if (newUser.getEmail() != null && userRepository.existsByEmail(newUser.getEmail())) {
-            throw new IllegalArgumentException("Email already registered: " + newUser.getEmail());
+        if (newUser.getEmail() == null || newUser.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        if (newUser.getPassword() == null || newUser.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Password is required");
+        }
+
+        String email = newUser.getEmail().trim();
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already registered: " + email);
         }
 
         if (newUser.getRole() == null || newUser.getRole().trim().isEmpty()) {
             newUser.setRole("Citizen");
         }
+        if (newUser.getName() == null || newUser.getName().trim().isEmpty()) {
+            newUser.setName(email.contains("@") ? email.substring(0, email.indexOf("@")) : "User");
+        }
 
-        String rawPassword = newUser.getPassword() != null ? newUser.getPassword() : "password123";
+        String rawPassword = newUser.getPassword();
+        newUser.setEmail(email);
         newUser.setPassword(passwordEncoder.encode(rawPassword));
         newUser.setCreatedAt(LocalDateTime.now());
         User saved = userRepository.save(newUser);

@@ -9,6 +9,7 @@ import com.resqgrid.backend.repository.IncidentReportRepository;
 import com.resqgrid.backend.repository.IncidentRepository;
 import com.resqgrid.backend.repository.ResourceAssignmentRepository;
 import com.resqgrid.backend.repository.ResourceRepository;
+import com.resqgrid.backend.repository.ServiceRequestRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,13 +34,15 @@ public class IncidentService {
     private final AiClientService aiClientService;
     private final OsrmService osrmService;
 
+    private final ServiceRequestRepository serviceRequestRepository;
+
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentReportRepository incidentReportRepository,
                            ResourceRepository resourceRepository,
                            ResourceAssignmentRepository resourceAssignmentRepository,
                            AlertRepository alertRepository,
                            MongoSyncService mongoSyncService) {
-        this(incidentRepository, incidentReportRepository, resourceRepository, resourceAssignmentRepository, alertRepository, mongoSyncService, null, null);
+        this(incidentRepository, incidentReportRepository, resourceRepository, resourceAssignmentRepository, alertRepository, mongoSyncService, null, null, null);
     }
 
     @Autowired
@@ -50,7 +53,8 @@ public class IncidentService {
                            AlertRepository alertRepository,
                            MongoSyncService mongoSyncService,
                            @Autowired(required = false) AiClientService aiClientService,
-                           @Autowired(required = false) OsrmService osrmService) {
+                           @Autowired(required = false) OsrmService osrmService,
+                           @Autowired(required = false) ServiceRequestRepository serviceRequestRepository) {
         this.incidentRepository = incidentRepository;
         this.incidentReportRepository = incidentReportRepository;
         this.resourceRepository = resourceRepository;
@@ -59,10 +63,191 @@ public class IncidentService {
         this.mongoSyncService = mongoSyncService;
         this.aiClientService = aiClientService;
         this.osrmService = osrmService;
+        this.serviceRequestRepository = serviceRequestRepository;
     }
 
     public List<Incident> getAllIncidents() {
         return incidentRepository.findAllByOrderByReportedAtDesc();
+    }
+
+    public List<String> getTypesForCategory(String category) {
+        if (category == null) return Collections.emptyList();
+        String cat = category.toUpperCase().replace("CAT_", "").trim();
+        if (cat.contains("FIRE")) {
+            return Arrays.asList("FIRE", "Fire", "Explosion", "Smoke", "Fire Breakdown");
+        } else if (cat.contains("FLOOD") || cat.contains("WATER")) {
+            return Arrays.asList("FLOOD", "Flood", "Drowning", "Water Logging", "Flash Flood");
+        } else if (cat.contains("MED") || cat.contains("HOSP")) {
+            return Arrays.asList("MEDICAL", "Medical", "Accident", "Trauma", "Health Emergency");
+        } else if (cat.contains("POLICE") || cat.contains("SEC")) {
+            return Arrays.asList("POLICE", "Police", "Security", "Riot", "Theft", "Law Enforcement");
+        }
+        return Collections.singletonList(category);
+    }
+
+    public List<Incident> getScopedIncidents(com.resqgrid.backend.security.UserPrincipal user) {
+        if (user == null) {
+            return Collections.emptyList();
+        }
+
+        String role = user.getRole() != null ? user.getRole().toUpperCase().replace(" ", "_") : "CITIZEN";
+
+        if ("ROLE_SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(role) || "ROLE_EMERGENCY_OPERATOR".equals(role) || "EMERGENCY_OPERATOR".equals(role) || "AUTHORITY_ADMIN".equals(role) || "ROLE_AUTHORITY_ADMIN".equals(role)) {
+            return incidentRepository.findAllByOrderByReportedAtDesc();
+        } else if ("ROLE_DEPARTMENT_ADMIN".equals(role) || "DEPARTMENT_ADMIN".equals(role) || "HOSPITAL_ADMIN".equals(role) || "ROLE_HOSPITAL_ADMIN".equals(role)) {
+            String deptCategory = user.getDepartmentCategory();
+            if (deptCategory == null || deptCategory.trim().isEmpty()) {
+                return incidentRepository.findAllByOrderByReportedAtDesc();
+            }
+            List<String> types = getTypesForCategory(deptCategory);
+            List<Incident> ownCategoryIncidents = incidentRepository.findByTypeIgnoreCaseInOrderByReportedAtDesc(types);
+
+            if (serviceRequestRepository == null) {
+                return ownCategoryIncidents;
+            }
+
+            // Fetch incidents granted strictly via ACCEPTED ServiceRequests
+            String rawCat = deptCategory.toUpperCase().replace("CAT_", "");
+            List<String> deptVariants = Arrays.asList(deptCategory, "CAT_" + rawCat, rawCat);
+            List<com.resqgrid.backend.entity.ServiceRequest> acceptedRequests =
+                    serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInAndStatus(deptVariants, "ACCEPTED");
+
+            Set<String> acceptedIncidentIds = new HashSet<>();
+            for (com.resqgrid.backend.entity.ServiceRequest sr : acceptedRequests) {
+                if (sr.getIncidentId() != null) {
+                    acceptedIncidentIds.add(sr.getIncidentId());
+                }
+            }
+
+            if (acceptedIncidentIds.isEmpty()) {
+                return ownCategoryIncidents;
+            }
+
+            Set<String> existingIds = ownCategoryIncidents.stream().map(Incident::getId).collect(Collectors.toSet());
+            List<Incident> grantedIncidents = incidentRepository.findAllById(acceptedIncidentIds);
+
+            List<Incident> result = new ArrayList<>(ownCategoryIncidents);
+            for (Incident inc : grantedIncidents) {
+                if (!existingIds.contains(inc.getId())) {
+                    result.add(inc);
+                }
+            }
+
+            result.sort((a, b) -> {
+                if (a.getReportedAt() == null || b.getReportedAt() == null) return 0;
+                return b.getReportedAt().compareTo(a.getReportedAt());
+            });
+
+            return result;
+        } else if ("ROLE_RESPONSE_TEAM".equals(role) || "RESPONSE_TEAM".equals(role)) {
+            String unitId = user.getUnitId();
+            if (unitId == null || unitId.trim().isEmpty()) {
+                return Collections.emptyList();
+            }
+            return incidentRepository.findByAssignedResourceIdsContainingOrderByReportedAtDesc(unitId);
+        } else if ("ROLE_CITIZEN".equals(role) || "CITIZEN".equals(role)) {
+            String email = user.getEmail();
+            if (email == null || email.trim().isEmpty()) {
+                return Collections.emptyList();
+            }
+            return incidentRepository.findByReporterEmailOrderByReportedAtDesc(email);
+        }
+
+        return incidentRepository.findAllByOrderByReportedAtDesc();
+    }
+
+    public boolean isUserAuthorizedForIncident(Incident incident, com.resqgrid.backend.security.UserPrincipal user) {
+        if (user == null || incident == null) return false;
+        String role = user.getRole() != null ? user.getRole().toUpperCase().replace(" ", "_") : "CITIZEN";
+
+        if ("ROLE_SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(role) || "ROLE_EMERGENCY_OPERATOR".equals(role) || "EMERGENCY_OPERATOR".equals(role) || "AUTHORITY_ADMIN".equals(role) || "ROLE_AUTHORITY_ADMIN".equals(role)) {
+            return true;
+        }
+
+        if ("ROLE_CITIZEN".equals(role) || "CITIZEN".equals(role)) {
+            return user.getEmail() != null && user.getEmail().equalsIgnoreCase(incident.getReporterEmail());
+        }
+
+        if ("ROLE_RESPONSE_TEAM".equals(role) || "RESPONSE_TEAM".equals(role)) {
+            String unitId = user.getUnitId();
+            return unitId != null && incident.getAssignedResourceIds() != null && incident.getAssignedResourceIds().contains(unitId);
+        }
+
+        if ("ROLE_DEPARTMENT_ADMIN".equals(role) || "DEPARTMENT_ADMIN".equals(role) || "HOSPITAL_ADMIN".equals(role) || "ROLE_HOSPITAL_ADMIN".equals(role)) {
+            String deptCategory = user.getDepartmentCategory();
+            if (deptCategory == null || deptCategory.trim().isEmpty()) return true;
+
+            List<String> types = getTypesForCategory(deptCategory);
+            String incType = incident.getType();
+            if (incType != null && types.stream().anyMatch(t -> t.equalsIgnoreCase(incType))) {
+                return true;
+            }
+
+            if (serviceRequestRepository == null) return false;
+
+            String rawCat = deptCategory.toUpperCase().replace("CAT_", "");
+            List<String> deptVariants = Arrays.asList(deptCategory, "CAT_" + rawCat, rawCat);
+            List<com.resqgrid.backend.entity.ServiceRequest> acceptedRequests =
+                    serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInAndStatus(deptVariants, "ACCEPTED");
+
+            return acceptedRequests.stream().anyMatch(sr -> incident.getId().equalsIgnoreCase(sr.getIncidentId()));
+        }
+
+        return true;
+    }
+
+    @Transactional
+    public Incident reclassifyIncident(String incidentId, String newCategory) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new RuntimeException("Incident not found: " + incidentId));
+
+        String formattedCategory = newCategory.toUpperCase().replace("CAT_", "").trim();
+        incident.setType(formattedCategory);
+        incident.setAiSummary("[RECLASSIFIED] Incident category manually reclassified to " + formattedCategory);
+
+        Alert reclassAlert = Alert.builder()
+                .id("ALT-" + System.currentTimeMillis())
+                .type("RECLASSIFIED")
+                .title("INCIDENT RECLASSIFIED TO " + formattedCategory)
+                .message(String.format("Incident %s has been rerouted to %s department.", incident.getId(), formattedCategory))
+                .incidentId(incident.getId())
+                .targetDepartment("CAT_" + formattedCategory)
+                .active(true)
+                .time("Just now")
+                .createdAt(LocalDateTime.now())
+                .build();
+        alertRepository.save(reclassAlert);
+        mongoSyncService.syncAlert(reclassAlert);
+
+        Incident saved = incidentRepository.save(incident);
+        mongoSyncService.syncIncident(saved);
+        return saved;
+    }
+
+    @Transactional
+    public Incident escalateIncident(String incidentId) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new RuntimeException("Incident not found: " + incidentId));
+
+        incident.setSeverity(5);
+
+        Alert escalationAlert = Alert.builder()
+                .id("ALT-" + System.currentTimeMillis())
+                .type("ESCALATION")
+                .title("CRITICAL ESCALATION: " + incident.getTitle())
+                .message(String.format("Incident %s escalated to Level 5 Critical Priority by Department Admin.", incident.getId()))
+                .incidentId(incident.getId())
+                .actionRequired("Immediate Super Admin / Multi-Agency Review")
+                .active(true)
+                .time("Just now")
+                .createdAt(LocalDateTime.now())
+                .build();
+        alertRepository.save(escalationAlert);
+        mongoSyncService.syncAlert(escalationAlert);
+
+        Incident saved = incidentRepository.save(incident);
+        mongoSyncService.syncIncident(saved);
+        return saved;
     }
 
     public Optional<Incident> getIncidentById(String id) {

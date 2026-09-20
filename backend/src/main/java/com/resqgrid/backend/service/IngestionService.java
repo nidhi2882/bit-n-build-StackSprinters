@@ -184,7 +184,30 @@ public class IngestionService {
 
         Incident savedIncident = incidentService.createIncident(incident);
 
-        // 4. Save Raw Report
+        // 4. Automated Department Notification Dispatch Alert
+        String targetDept = "CAT_FLOOD";
+        String catLower = (categoryName != null ? categoryName : "").toLowerCase();
+        if (catLower.contains("fire")) targetDept = "CAT_FIRE";
+        else if (catLower.contains("med") || catLower.contains("health")) targetDept = "CAT_MED";
+        else if (catLower.contains("traffic") || catLower.contains("crash") || catLower.contains("accident")) targetDept = "CAT_TRAFFIC";
+        else if (catLower.contains("hazmat") || catLower.contains("chemical") || catLower.contains("gas")) targetDept = "CAT_HAZMAT";
+
+        Alert autoAlert = Alert.builder()
+                .id("ALT-AUTO-" + System.currentTimeMillis())
+                .type(severity >= 4 ? "CRITICAL" : "WARNING")
+                .title("⚡ AUTOMATED DISPATCH ALERT: " + savedIncident.getTitle())
+                .message("AI automatically classified as " + categoryName + ". Targeted notification dispatched to " + targetDept + " service providers.")
+                .time("Just now")
+                .incidentId(savedIncident.getId())
+                .actionRequired("Immediate " + categoryName + " Unit Deployment")
+                .targetDepartment(targetDept)
+                .active(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+        alertRepository.save(autoAlert);
+        mongoSyncService.syncAlert(autoAlert);
+
+        // 5. Save Raw Report
         IncidentReport report = IncidentReport.builder()
                 .id("REP-" + System.currentTimeMillis())
                 .incidentId(savedIncident.getId())
@@ -199,6 +222,7 @@ public class IngestionService {
         Map<String, Object> response = new HashMap<>();
         response.put("incident", savedIncident);
         response.put("report", report);
+        response.put("alert", autoAlert);
         response.put("trust", trust);
         response.put("aiMetadata", aiClassification);
         return response;

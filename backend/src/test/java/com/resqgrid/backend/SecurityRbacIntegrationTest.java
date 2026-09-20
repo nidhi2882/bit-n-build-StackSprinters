@@ -30,7 +30,7 @@ public class SecurityRbacIntegrationTest {
     void testPublicLoginEndpointAllowed() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"test@resqgrid.org\",\"password\":\"password123\",\"role\":\"Citizen\"}"))
+                        .content("{\"email\":\"citizen@resqgrid.org\",\"password\":\"citizen123\",\"role\":\"Citizen\"}"))
                 .andExpect(status().isOk());
     }
 

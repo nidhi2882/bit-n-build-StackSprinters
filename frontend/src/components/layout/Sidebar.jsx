@@ -32,6 +32,8 @@ const Sidebar = () => {
             <NavLink to="/" className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
                 <LayoutDashboard size={18} />
                 <span>
+                    {userRole === "Super Admin" && "Super Admin Console"}
+                    {userRole === "Department Admin" && "Dept Admin Console"}
                     {userRole === "Response Team" && "Field Unit Dashboard"}
                     {userRole === "Hospital Admin" && "Facility Dashboard"}
                     {userRole === "Authority Admin" && "Executive Governance"}

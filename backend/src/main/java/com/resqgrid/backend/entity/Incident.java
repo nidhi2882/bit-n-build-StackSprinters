@@ -41,6 +41,9 @@ public class Incident {
     @Column(name = "reporter_role")
     private String reporterRole;
 
+    @Column(name = "reporter_email")
+    private String reporterEmail;
+
     @Column(name = "ai_summary", columnDefinition = "TEXT")
     private String aiSummary;
 
@@ -68,7 +71,7 @@ public class Incident {
 
     public Incident() {}
 
-    public Incident(String id, String title, String type, String description, Integer severity, String status, String locationName, Double lat, Double lng, LocalDateTime reportedAt, String reporterRole, String aiSummary, Double aiConfidence, Integer duplicateCount, List<String> requiredCapabilities, List<String> assignedResourceIds, Boolean isMerged, String mergedIntoIncidentId) {
+    public Incident(String id, String title, String type, String description, Integer severity, String status, String locationName, Double lat, Double lng, LocalDateTime reportedAt, String reporterRole, String reporterEmail, String aiSummary, Double aiConfidence, Integer duplicateCount, List<String> requiredCapabilities, List<String> assignedResourceIds, Boolean isMerged, String mergedIntoIncidentId) {
         this.id = id;
         this.title = title;
         this.type = type;
@@ -80,6 +83,7 @@ public class Incident {
         this.lng = lng;
         this.reportedAt = reportedAt != null ? reportedAt : LocalDateTime.now();
         this.reporterRole = reporterRole;
+        this.reporterEmail = reporterEmail;
         this.aiSummary = aiSummary;
         this.aiConfidence = aiConfidence;
         this.duplicateCount = duplicateCount != null ? duplicateCount : 0;
@@ -139,6 +143,9 @@ public class Incident {
     public String getReporterRole() { return reporterRole; }
     public void setReporterRole(String reporterRole) { this.reporterRole = reporterRole; }
 
+    public String getReporterEmail() { return reporterEmail; }
+    public void setReporterEmail(String reporterEmail) { this.reporterEmail = reporterEmail; }
+
     public String getAiSummary() { return aiSummary; }
     public void setAiSummary(String aiSummary) { this.aiSummary = aiSummary; }
 
@@ -181,6 +188,7 @@ public class Incident {
         private Double lng;
         private LocalDateTime reportedAt;
         private String reporterRole;
+        private String reporterEmail;
         private String aiSummary;
         private Double aiConfidence;
         private Integer duplicateCount = 0;
@@ -200,6 +208,7 @@ public class Incident {
         public IncidentBuilder lng(Double lng) { this.lng = lng; return this; }
         public IncidentBuilder reportedAt(LocalDateTime reportedAt) { this.reportedAt = reportedAt; return this; }
         public IncidentBuilder reporterRole(String reporterRole) { this.reporterRole = reporterRole; return this; }
+        public IncidentBuilder reporterEmail(String reporterEmail) { this.reporterEmail = reporterEmail; return this; }
         public IncidentBuilder aiSummary(String aiSummary) { this.aiSummary = aiSummary; return this; }
         public IncidentBuilder aiConfidence(Double aiConfidence) { this.aiConfidence = aiConfidence; return this; }
         public IncidentBuilder duplicateCount(Integer duplicateCount) { this.duplicateCount = duplicateCount; return this; }
@@ -209,7 +218,7 @@ public class Incident {
         public IncidentBuilder mergedIntoIncidentId(String mergedIntoIncidentId) { this.mergedIntoIncidentId = mergedIntoIncidentId; return this; }
 
         public Incident build() {
-            return new Incident(id, title, type, description, severity, status, locationName, lat, lng, reportedAt, reporterRole, aiSummary, aiConfidence, duplicateCount, requiredCapabilities, assignedResourceIds, isMerged, mergedIntoIncidentId);
+            return new Incident(id, title, type, description, severity, status, locationName, lat, lng, reportedAt, reporterRole, reporterEmail, aiSummary, aiConfidence, duplicateCount, requiredCapabilities, assignedResourceIds, isMerged, mergedIntoIncidentId);
         }
     }
 }

@@ -9,6 +9,8 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
     private final EmergencyCategoryRepository categoryRepository;
     private final EmergencySubTypeRepository subTypeRepository;
     private final MongoTemplate mongoTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public DataInitializer(
@@ -36,7 +39,8 @@ public class DataInitializer implements CommandLineRunner {
             AlertRepository alertRepository,
             EmergencyCategoryRepository categoryRepository,
             EmergencySubTypeRepository subTypeRepository,
-            @Autowired(required = false) MongoTemplate mongoTemplate) {
+            @Autowired(required = false) MongoTemplate mongoTemplate,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.incidentRepository = incidentRepository;
         this.resourceRepository = resourceRepository;
@@ -45,6 +49,7 @@ public class DataInitializer implements CommandLineRunner {
         this.categoryRepository = categoryRepository;
         this.subTypeRepository = subTypeRepository;
         this.mongoTemplate = mongoTemplate;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -81,10 +86,64 @@ public class DataInitializer implements CommandLineRunner {
 
         // Ensure baseline operator and citizen accounts exist if database is fresh
         if (userRepository.count() == 0) {
+            User superAdmin = User.builder()
+                    .name("Super Admin Control")
+                    .email("superadmin@resqgrid.gov")
+                    .password(passwordEncoder.encode("superadmin123"))
+                    .role("Super Admin")
+                    .phone("+91 90000 00001")
+                    .organization("ResQGrid Command & Control Center")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            User fireAdmin = User.builder()
+                    .name("Captain Suresh Kumar (Fire Admin)")
+                    .email("fire.admin@resqgrid.gov")
+                    .password(passwordEncoder.encode("fireadmin123"))
+                    .role("Department Admin")
+                    .departmentCategory("CAT_FIRE")
+                    .phone("+91 98234 56790")
+                    .organization("Vadodara Fire Department")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            User floodAdmin = User.builder()
+                    .name("Commander Rajesh Rao (Flood Admin)")
+                    .email("flood.admin@resqgrid.gov")
+                    .password(passwordEncoder.encode("floodadmin123"))
+                    .role("Department Admin")
+                    .departmentCategory("CAT_FLOOD")
+                    .phone("+91 98234 56789")
+                    .organization("NDRF Flood Command")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            User medicalAdmin = User.builder()
+                    .name("Dr. Sunita Patel (Medical Admin)")
+                    .email("medical.admin@resqgrid.gov")
+                    .password(passwordEncoder.encode("medadmin123"))
+                    .role("Department Admin")
+                    .departmentCategory("CAT_MED")
+                    .phone("+91 98111 22334")
+                    .organization("SSG Hospital ER")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            User policeAdmin = User.builder()
+                    .name("Inspector Ramesh Patel (Police Admin)")
+                    .email("police.admin@resqgrid.gov")
+                    .password(passwordEncoder.encode("policeadmin123"))
+                    .role("Department Admin")
+                    .departmentCategory("CAT_SECURITY")
+                    .phone("+91 98234 56794")
+                    .organization("Vadodara Police Dept")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
             User operator = User.builder()
                     .name("Vikram Mehta")
                     .email("operator@resqgrid.gov")
-                    .password("operator123")
+                    .password(passwordEncoder.encode("operator123"))
                     .role("Emergency Operator")
                     .phone("+91 98765 43210")
                     .organization("Vadodara Emergency Response Center (VERC)")
@@ -92,19 +151,33 @@ public class DataInitializer implements CommandLineRunner {
                     .build();
 
             User responder = User.builder()
-                    .name("Commander Rajesh Rao")
+                    .name("NDRF Water Rescue Unit 01")
                     .email("responder@ndrf.gov")
-                    .password("responder123")
+                    .password(passwordEncoder.encode("responder123"))
                     .role("Response Team")
+                    .unitId("RES-001")
+                    .departmentCategory("CAT_FLOOD")
                     .phone("+91 98234 56789")
                     .organization("6th Bn NDRF Jarod")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            User fireSquad = User.builder()
+                    .name("Vadodara Fire Squad 04")
+                    .email("fire.squad@resqgrid.gov")
+                    .password(passwordEncoder.encode("firesquad123"))
+                    .role("Response Team")
+                    .unitId("RES-002")
+                    .departmentCategory("CAT_FIRE")
+                    .phone("+91 98234 56790")
+                    .organization("Dandiyabazar Fire Station")
                     .createdAt(LocalDateTime.now())
                     .build();
 
             User hospitalAdmin = User.builder()
                     .name("Dr. Sunita Patel")
                     .email("hospital@ssg.org")
-                    .password("hospital123")
+                    .password(passwordEncoder.encode("hospital123"))
                     .role("Hospital Admin")
                     .phone("+91 98111 22334")
                     .organization("SSG Hospital Trauma Center")
@@ -114,7 +187,7 @@ public class DataInitializer implements CommandLineRunner {
             User authority = User.builder()
                     .name("Collector Ananya Sharma, IAS")
                     .email("authority@vadodara.gov")
-                    .password("authority123")
+                    .password(passwordEncoder.encode("authority123"))
                     .role("Authority Admin")
                     .phone("+91 98000 11223")
                     .organization("District Disaster Management Authority (DDMA)")
@@ -124,20 +197,104 @@ public class DataInitializer implements CommandLineRunner {
             User citizen = User.builder()
                     .name("Aarav Patel")
                     .email("citizen@resqgrid.org")
-                    .password("citizen123")
+                    .password(passwordEncoder.encode("citizen123"))
                     .role("Citizen")
                     .phone("+91 97234 11223")
                     .organization("Citizen Community Network (Akota)")
                     .createdAt(LocalDateTime.now())
                     .build();
 
-            List<User> initialUsers = Arrays.asList(operator, responder, hospitalAdmin, authority, citizen);
+            List<User> initialUsers = Arrays.asList(superAdmin, fireAdmin, floodAdmin, medicalAdmin, policeAdmin, operator, responder, fireSquad, hospitalAdmin, authority, citizen);
             userRepository.saveAll(initialUsers);
             if (mongoTemplate != null) {
                 try {
                     initialUsers.forEach(u -> mongoTemplate.save(u, "users"));
                 } catch (Exception e) {
                     log.warn("Mongo user seeding notice: {}", e.getMessage());
+                }
+            }
+        } else {
+            // Re-encode plain text passwords if any existing seeded users have non-BCrypt passwords
+            List<User> existingUsers = userRepository.findAll();
+            for (User u : existingUsers) {
+                if (u.getPassword() != null && !u.getPassword().startsWith("$2a$")) {
+                    String raw = u.getPassword();
+                    u.setPassword(passwordEncoder.encode(raw));
+                    userRepository.save(u);
+                    if (mongoTemplate != null) {
+                        try {
+                            mongoTemplate.save(u, "users");
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        }
+
+        // Seed sample incidents if fresh
+        if (incidentRepository.count() == 0) {
+            log.info("Seeding sample incidents for multi-role testing...");
+            Incident inc1 = Incident.builder()
+                    .id("INC-2026-001")
+                    .title("Flash Flood Inundation near Vishwamitri Bridge")
+                    .type("FLOOD")
+                    .description("Water level rising rapidly over 4 feet near bridge. 12 stranded residents reported.")
+                    .severity(4)
+                    .status("Reported")
+                    .locationName("Vishwamitri River Bridge, Vadodara")
+                    .lat(22.3100)
+                    .lng(73.1800)
+                    .reporterRole("Citizen")
+                    .reporterEmail("citizen@resqgrid.org")
+                    .aiSummary("Critical urban flood surge. Requires boat deployment.")
+                    .aiConfidence(0.95)
+                    .requiredCapabilities(Arrays.asList("Water Rescue", "Inflatable Boat"))
+                    .reportedAt(LocalDateTime.now().minusMinutes(45))
+                    .build();
+
+            Incident inc2 = Incident.builder()
+                    .id("INC-2026-002")
+                    .title("Structural Fire at Chemical Warehouse")
+                    .type("FIRE")
+                    .description("Dense chemical smoke reported in GIDC Nandesari industrial block. Explosion risk.")
+                    .severity(5)
+                    .status("Reported")
+                    .locationName("GIDC Nandesari Industrial Estate")
+                    .lat(22.3500)
+                    .lng(73.1500)
+                    .reporterRole("Citizen")
+                    .reporterEmail("citizen@resqgrid.org")
+                    .aiSummary("Level-5 Chemical & Structural Fire. Hazmat & foam tender required.")
+                    .aiConfidence(0.98)
+                    .requiredCapabilities(Arrays.asList("Fire Engine", "Foam Tender", "Hazmat Unit"))
+                    .reportedAt(LocalDateTime.now().minusMinutes(20))
+                    .build();
+
+            Incident inc3 = Incident.builder()
+                    .id("INC-2026-003")
+                    .title("Highway Multi-Vehicle Crash & Medical Emergency")
+                    .type("MEDICAL")
+                    .description("Collided bus and tanker near Golden Chowkdi. 3 injured passengers need evacuation.")
+                    .severity(3)
+                    .status("Assigned")
+                    .assignedResourceIds(Arrays.asList("RES-001"))
+                    .locationName("Golden Chowkdi, NH-48")
+                    .lat(22.3300)
+                    .lng(73.2200)
+                    .reporterRole("Citizen")
+                    .reporterEmail("citizen@resqgrid.org")
+                    .aiSummary("Medical emergency requiring ambulance and trauma response.")
+                    .aiConfidence(0.91)
+                    .requiredCapabilities(Arrays.asList("Emergency Medical", "Advanced Ambulance"))
+                    .reportedAt(LocalDateTime.now().minusMinutes(10))
+                    .build();
+
+            List<Incident> sampleIncidents = Arrays.asList(inc1, inc2, inc3);
+            incidentRepository.saveAll(sampleIncidents);
+            if (mongoTemplate != null) {
+                try {
+                    sampleIncidents.forEach(i -> mongoTemplate.save(i, "incidents"));
+                } catch (Exception e) {
+                    log.warn("Mongo incident seeding notice: {}", e.getMessage());
                 }
             }
         }

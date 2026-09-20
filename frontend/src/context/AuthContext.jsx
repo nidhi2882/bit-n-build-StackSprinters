@@ -9,34 +9,19 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const initAuth = async () => {
+        const initAuth = () => {
             const storedUser = authService.getCurrentUser();
             const storedToken = localStorage.getItem("token");
             if (storedUser && storedToken && !storedToken.startsWith("demo-token-") && !storedToken.startsWith("mock-jwt-")) {
                 setUser(storedUser);
                 setToken(storedToken);
-                setLoading(false);
             } else {
-                try {
-                    const result = await authService.login({
-                        email: "operator@resqgrid.gov",
-                        password: "operator123",
-                        role: "Emergency Operator"
-                    });
-                    setUser(result.user);
-                    setToken(result.token);
-                } catch (e) {
-                    const defaultDemo = {
-                        id: "USR-001",
-                        name: "Command Operator",
-                        email: "operator@resqgrid.gov",
-                        role: "Emergency Operator"
-                    };
-                    setUser(defaultDemo);
-                } finally {
-                    setLoading(false);
-                }
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                setUser(null);
+                setToken(null);
             }
+            setLoading(false);
         };
         initAuth();
     }, []);
@@ -79,21 +64,10 @@ export const AuthProvider = ({ children }) => {
             password = "citizen123";
         }
 
-        try {
-            const result = await authService.login({ email, password, role: newRole });
-            setUser(result.user);
-            setToken(result.token);
-        } catch (err) {
-            const updated = {
-                ...(user || {}),
-                role: newRole,
-                email,
-                unitName: newRole === "Response Team" ? "NDRF Squad 03" : null,
-                hospitalId: newRole === "Hospital Admin" ? "HOSP-001" : null
-            };
-            setUser(updated);
-            localStorage.setItem("user", JSON.stringify(updated));
-        }
+        const result = await authService.login({ email, password, role: newRole });
+        setUser(result.user);
+        setToken(result.token);
+        return result.user;
     };
 
     return (

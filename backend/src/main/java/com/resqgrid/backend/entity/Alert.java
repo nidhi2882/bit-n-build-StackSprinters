@@ -28,6 +28,9 @@ public class Alert {
     @Column(name = "action_required")
     private String actionRequired;
 
+    @Column(name = "target_department")
+    private String targetDepartment;
+
     @Column(nullable = false)
     private Boolean active = true;
 
@@ -36,7 +39,7 @@ public class Alert {
 
     public Alert() {}
 
-    public Alert(String id, String type, String title, String message, String time, String incidentId, String actionRequired, Boolean active, LocalDateTime createdAt) {
+    public Alert(String id, String type, String title, String message, String time, String incidentId, String actionRequired, String targetDepartment, Boolean active, LocalDateTime createdAt) {
         this.id = id;
         this.type = type;
         this.title = title;
@@ -44,6 +47,7 @@ public class Alert {
         this.time = time;
         this.incidentId = incidentId;
         this.actionRequired = actionRequired;
+        this.targetDepartment = targetDepartment;
         this.active = active != null ? active : true;
         this.createdAt = createdAt;
     }
@@ -80,6 +84,9 @@ public class Alert {
     public String getActionRequired() { return actionRequired; }
     public void setActionRequired(String actionRequired) { this.actionRequired = actionRequired; }
 
+    public String getTargetDepartment() { return targetDepartment; }
+    public void setTargetDepartment(String targetDepartment) { this.targetDepartment = targetDepartment; }
+
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }
 
@@ -97,6 +104,7 @@ public class Alert {
         private String time;
         private String incidentId;
         private String actionRequired;
+        private String targetDepartment;
         private Boolean active = true;
         private LocalDateTime createdAt;
 
@@ -107,11 +115,12 @@ public class Alert {
         public AlertBuilder time(String time) { this.time = time; return this; }
         public AlertBuilder incidentId(String incidentId) { this.incidentId = incidentId; return this; }
         public AlertBuilder actionRequired(String actionRequired) { this.actionRequired = actionRequired; return this; }
+        public AlertBuilder targetDepartment(String targetDepartment) { this.targetDepartment = targetDepartment; return this; }
         public AlertBuilder active(Boolean active) { this.active = active; return this; }
         public AlertBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Alert build() {
-            return new Alert(id, type, title, message, time, incidentId, actionRequired, active, createdAt);
+            return new Alert(id, type, title, message, time, incidentId, actionRequired, targetDepartment, active, createdAt);
         }
     }
 }
