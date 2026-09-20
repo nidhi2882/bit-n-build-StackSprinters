@@ -61,8 +61,8 @@ export default function DepartmentIncidentConsole({ departmentKey: propDeptKey =
     }, []);
 
     // Load department-scoped telemetry
-    const loadData = async () => {
-        setLoading(true);
+    const loadData = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const [incData, unitData, incomingData, outgoingData] = await Promise.all([
                 incidentService.getDepartmentIncidents(activeDepartment),
@@ -78,15 +78,26 @@ export default function DepartmentIncidentConsole({ departmentKey: propDeptKey =
         } catch (err) {
             console.error(`Failed to load telemetry for ${activeDepartment}`, err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(loadData, 12000);
+        const interval = setInterval(() => loadData(true), 8000);
         return () => clearInterval(interval);
     }, [activeDepartment]);
+
+    // Keep the open detail drawer in sync with freshly polled incident data so status
+    // changes reflect in real time without needing to reopen the drawer.
+    useEffect(() => {
+        if (!selectedIncident) return;
+        const fresh = incidents.find((i) => i.id === selectedIncident.id);
+        if (fresh && fresh.status !== selectedIncident.status) {
+            setSelectedIncident(fresh);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [incidents]);
 
     // SLA helper: Calculate remaining seconds and urgency styling
     const getSlaInfo = (incident) => {

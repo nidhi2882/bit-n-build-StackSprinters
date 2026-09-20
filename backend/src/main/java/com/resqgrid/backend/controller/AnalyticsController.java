@@ -51,6 +51,20 @@ public class AnalyticsController {
                 .count();
         long deployedUnits = resources.size() - availableUnits;
 
+        // Incident volume grouped by normalized department category (for the analytics chart)
+        Map<String, Long> byCategory = new java.util.LinkedHashMap<>();
+        for (String cat : java.util.Arrays.asList("FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE")) {
+            byCategory.put(cat, 0L);
+        }
+        for (Incident inc : incidents) {
+            String raw = inc.getCategory() != null ? inc.getCategory() : inc.getType();
+            com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(raw);
+            String key = dc != null ? dc.name() : null;
+            if (key != null) {
+                byCategory.merge(key, 1L, Long::sum);
+            }
+        }
+
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("totalIncidents", incidents.size());
         metrics.put("activeIncidents", activeIncidents);
@@ -61,7 +75,9 @@ public class AnalyticsController {
         metrics.put("deployedUnits", deployedUnits);
         metrics.put("activeAlertsCount", alertService.getActiveAlerts().size());
         metrics.put("avgResponseTimeMinutes", 4.3);
+        metrics.put("avgResponseMinutes", 4.3);
         metrics.put("slaComplianceRate", 98.4);
+        metrics.put("byCategory", byCategory);
         metrics.put("resourceUtilizationRate", resources.isEmpty() ? 0 : Math.round((deployedUnits * 100.0) / resources.size()));
 
         return ResponseEntity.ok(metrics);

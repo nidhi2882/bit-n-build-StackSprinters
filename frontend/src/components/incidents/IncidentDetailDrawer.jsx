@@ -31,8 +31,20 @@ export default function IncidentDetailDrawer({ incident, onClose, onUpdated, onR
 
     if (!incident) return null;
 
-    const steps = ["Reported", "Assigned", "En Route", "Arrived", "Resolved"];
-    const currentStepIdx = steps.findIndex(s => s.toLowerCase() === status.toLowerCase().replace("-", " "));
+    // Canonical lifecycle vocabulary shared across drawer, queue table, and citizen timeline.
+    const steps = ["Reported", "Assigned", "En-Route", "On-Scene", "Resolved"];
+    const normalize = (s) => (s || "").toLowerCase().replace(/[\s-]/g, "");
+    const statusAliases = {
+        reported: "Reported",
+        assigned: "Assigned",
+        enroute: "En-Route",
+        onscene: "On-Scene",
+        arrived: "On-Scene",
+        onsite: "On-Scene",
+        resolved: "Resolved",
+    };
+    const canonicalStatus = statusAliases[normalize(status)] || status;
+    const currentStepIdx = steps.findIndex(s => normalize(s) === normalize(canonicalStatus));
     const activeIdx = currentStepIdx >= 0 ? currentStepIdx : 0;
 
     const handleStatusChange = async (targetStatus) => {
@@ -309,7 +321,7 @@ export default function IncidentDetailDrawer({ incident, onClose, onUpdated, onR
                         </span>
                         <div className="grid grid-cols-2 gap-2">
                             <button
-                                onClick={() => handleStatusChange("En Route")}
+                                onClick={() => handleStatusChange("En-Route")}
                                 disabled={loading}
                                 className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                             >
@@ -317,7 +329,7 @@ export default function IncidentDetailDrawer({ incident, onClose, onUpdated, onR
                                 <span>Deploy / En-Route</span>
                             </button>
                             <button
-                                onClick={() => handleStatusChange("Arrived")}
+                                onClick={() => handleStatusChange("On-Scene")}
                                 disabled={loading}
                                 className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                             >

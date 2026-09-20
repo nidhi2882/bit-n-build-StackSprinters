@@ -34,9 +34,17 @@ export default function NotificationPanel({ onClose }) {
 
     useEffect(() => {
         loadAlerts();
-        const poll = setInterval(loadAlerts, 12000);
+        // Auto-refresh every 1 minute to pull in new department-scoped notifications.
+        const poll = setInterval(loadAlerts, 60000);
         return () => clearInterval(poll);
     }, []);
+
+    // Clear all notifications: dismiss every real backend alert, keep the SLA monitor banner.
+    const clearAll = async () => {
+        const dismissable = notifications.filter(n => n.id && n.id !== SLA_MONITOR.id);
+        setNotifications([SLA_MONITOR]);
+        await Promise.all(dismissable.map(n => alertService.dismissAlert(n.id).catch(() => {})));
+    };
 
     useEffect(() => {
         slaService.getStatus()
@@ -122,6 +130,14 @@ export default function NotificationPanel({ onClose }) {
                             title="Mark all as read"
                         >
                             <span className="material-symbols-outlined text-lg">done_all</span>
+                        </button>
+                        <button
+                            onClick={clearAll}
+                            className="p-1 rounded text-on-surface-variant hover:text-error transition-colors text-xs font-medium flex items-center gap-1"
+                            title="Clear all notifications"
+                        >
+                            <span className="material-symbols-outlined text-lg">delete_sweep</span>
+                            <span className="font-mono text-[10px] hidden sm:inline">Clear</span>
                         </button>
                         <button
                             onClick={onClose}

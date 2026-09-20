@@ -156,11 +156,11 @@ public class ResourceService {
             String incId = resource.getAssignedIncidentId();
             incidentRepository.findById(incId).ifPresent(inc -> {
                 if ("On-Scene".equalsIgnoreCase(effectiveStatus) || "Arrived".equalsIgnoreCase(effectiveStatus)) {
-                    inc.setStatus("Arrived");
+                    inc.setStatus("On-Scene");
                     incidentRepository.save(inc);
                     mongoSyncService.syncIncident(inc);
                 } else if ("En-Route".equalsIgnoreCase(effectiveStatus) || "En Route".equalsIgnoreCase(effectiveStatus)) {
-                    inc.setStatus("En Route");
+                    inc.setStatus("En-Route");
                     incidentRepository.save(inc);
                     mongoSyncService.syncIncident(inc);
                 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import copilotService from "../../services/copilotService";
 
 export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, category = "FLOOD" }) {
@@ -65,29 +66,31 @@ export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, 
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] bg-surface-dark border-l border-border-dark shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    // Rendered through a portal to document.body so the drawer escapes the fixed 64px
+    // header it is mounted inside (which was clipping/collapsing its body).
+    return createPortal(
+        <div className="fixed inset-y-0 right-0 z-[100] w-full sm:w-[440px] h-screen bg-surface-container-lowest border-l border-surface-container-high shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
             {/* Header */}
-            <div className="p-4 bg-surface-darker border-b border-border-dark flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary">
+            <div className="shrink-0 p-4 bg-surface-container-low border-b border-surface-container-high flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 shrink-0 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center">
                         <span className="material-symbols-outlined text-xl">smart_toy</span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-text-main text-sm">ResQGrid AI Copilot</h3>
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[9px] font-bold">
+                            <h3 className="font-bold text-on-surface text-sm truncate">ResQGrid AI Copilot</h3>
+                            <span className="px-1.5 py-0.5 rounded bg-secondary-container text-secondary font-mono text-[9px] font-bold shrink-0">
                                 SOP RAG
                             </span>
                         </div>
-                        <p className="text-[11px] font-mono text-text-muted">
+                        <p className="text-[11px] font-mono text-on-surface-variant truncate">
                             {sopData?.docId || "SOP-NDRF-01"} Active
                         </p>
                     </div>
                 </div>
                 <button
                     onClick={onClose}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-main hover:bg-surface-elevated transition-colors"
+                    className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
                 >
                     <span className="material-symbols-outlined text-base">close</span>
                 </button>
@@ -95,21 +98,21 @@ export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, 
 
             {/* SOP Reference Banner */}
             {sopData && (
-                <div className="p-3 bg-primary/10 border-b border-border-dark text-xs flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary text-base">verified</span>
-                        <span className="text-text-main font-semibold truncate max-w-[280px]">
+                <div className="shrink-0 p-3 bg-primary-container/20 border-b border-surface-container-high text-xs flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="material-symbols-outlined text-primary text-base shrink-0">verified</span>
+                        <span className="text-on-surface font-semibold truncate">
                             {sopData.title}
                         </span>
                     </div>
-                    <span className="font-mono text-[10px] text-primary font-bold">
+                    <span className="font-mono text-[10px] text-primary font-bold shrink-0">
                         {Math.round((sopData.confidenceScore || 0.95) * 100)}% Match
                     </span>
                 </div>
             )}
 
             {/* Quick Prompts Chips */}
-            <div className="p-3 bg-surface-dark border-b border-border-dark/60 flex items-center gap-2 overflow-x-auto">
+            <div className="shrink-0 p-3 bg-surface-container-lowest border-b border-surface-container-high flex items-center gap-2 overflow-x-auto">
                 {[
                     "Standard SOP Checklist",
                     "Evacuation Perimeter",
@@ -119,7 +122,7 @@ export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, 
                     <button
                         key={chip}
                         onClick={() => handleSend(chip)}
-                        className="px-2.5 py-1 rounded-full bg-surface-darker hover:bg-surface-elevated border border-border-dark text-[11px] text-text-muted hover:text-text-main whitespace-nowrap transition-colors"
+                        className="px-2.5 py-1 rounded-full bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-[11px] text-on-surface-variant hover:text-on-surface whitespace-nowrap transition-colors"
                     >
                         {chip}
                     </button>
@@ -127,29 +130,31 @@ export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, 
             </div>
 
             {/* Messages Chat List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-surface-container-lowest">
                 {messages.map((m, idx) => (
                     <div
                         key={idx}
                         className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
                     >
-                        <div className={`max-w-[90%] rounded-2xl p-3.5 text-xs shadow-md ${
+                        <div className={`max-w-[90%] rounded-2xl p-3.5 text-xs shadow-sm ${
                             m.role === "user"
-                                ? "bg-primary text-white rounded-br-none"
-                                : "bg-surface-darker border border-border-dark text-text-main rounded-bl-none"
+                                ? "bg-primary text-on-primary rounded-br-none"
+                                : "bg-surface-container border border-surface-container-high text-on-surface rounded-bl-none"
                         }`}>
-                            <div className="prose prose-invert prose-xs leading-relaxed whitespace-pre-wrap">
+                            <div className="leading-relaxed whitespace-pre-wrap break-words">
                                 {m.content}
                             </div>
 
                             {/* Citations Pills */}
                             {m.citations && m.citations.length > 0 && (
-                                <div className="mt-2.5 pt-2 border-t border-border-dark/60 flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[10px] font-mono text-text-muted">Citations:</span>
+                                <div className="mt-2.5 pt-2 border-t border-current/10 flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] font-mono opacity-70">Citations:</span>
                                     {m.citations.map((c, ci) => (
                                         <span
                                             key={ci}
-                                            className="px-1.5 py-0.5 rounded bg-surface-elevated text-primary font-mono text-[10px] font-bold"
+                                            className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-bold ${
+                                                m.role === "user" ? "bg-white/20 text-on-primary" : "bg-surface-container-high text-primary"
+                                            }`}
                                         >
                                             [{c}]
                                         </span>
@@ -157,13 +162,13 @@ export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, 
                                 </div>
                             )}
                         </div>
-                        <span className="text-[10px] font-mono text-text-muted mt-1 px-1">
+                        <span className="text-[10px] font-mono text-on-surface-variant mt-1 px-1">
                             {m.time}
                         </span>
                     </div>
                 ))}
                 {loading && (
-                    <div className="flex items-center gap-2 text-text-muted text-xs font-mono p-3 bg-surface-darker border border-border-dark rounded-xl w-48">
+                    <div className="flex items-center gap-2 text-on-surface-variant text-xs font-mono p-3 bg-surface-container border border-surface-container-high rounded-xl w-48">
                         <span className="material-symbols-outlined text-base text-primary animate-spin">sync</span>
                         <span>Reasoning with RAG...</span>
                     </div>
@@ -172,22 +177,23 @@ export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, 
             </div>
 
             {/* Input Form */}
-            <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="p-3 bg-surface-darker border-t border-border-dark flex items-center gap-2">
+            <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="shrink-0 p-3 bg-surface-container-low border-t border-surface-container-high flex items-center gap-2">
                 <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask Copilot for SOPs, triage, or units..."
-                    className="flex-1 px-3 py-2 rounded-xl bg-surface-dark border border-border-dark text-text-main text-xs outline-none focus:border-primary transition-colors"
+                    className="flex-1 px-3 py-2 rounded-xl bg-surface-container-lowest border border-surface-container-high text-on-surface placeholder:text-on-surface-variant text-xs outline-none focus:ring-2 focus:ring-primary transition-colors"
                 />
                 <button
                     type="submit"
                     disabled={loading || !input.trim()}
-                    className="w-9 h-9 rounded-xl bg-primary hover:bg-primary-hover disabled:opacity-50 text-white flex items-center justify-center transition-colors shadow-sm"
+                    className="w-9 h-9 shrink-0 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-on-primary flex items-center justify-center transition-colors shadow-sm"
                 >
                     <span className="material-symbols-outlined text-base">send</span>
                 </button>
             </form>
-        </div>
+        </div>,
+        document.body
     );
 }

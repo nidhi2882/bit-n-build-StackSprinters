@@ -75,6 +75,28 @@ public class AlertService {
         });
     }
 
+    /**
+     * Deactivates all active alerts tied to an incident. Called when an incident is
+     * resolved/cancelled so its notifications are removed from every admin's panel.
+     */
+    @Transactional
+    public int dismissAlertsForIncident(String incidentId) {
+        if (incidentId == null || incidentId.trim().isEmpty()) {
+            return 0;
+        }
+        List<Alert> alerts = alertRepository.findByIncidentId(incidentId);
+        int count = 0;
+        for (Alert alert : alerts) {
+            if (Boolean.TRUE.equals(alert.getActive())) {
+                alert.setActive(false);
+                Alert saved = alertRepository.save(alert);
+                mongoSyncService.syncAlert(saved);
+                count++;
+            }
+        }
+        return count;
+    }
+
     @Transactional
     public Alert createAlert(Alert alert) {
         if (alert.getId() == null) {

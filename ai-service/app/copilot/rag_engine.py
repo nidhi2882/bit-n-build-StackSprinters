@@ -52,19 +52,33 @@ class CopilotEngine:
         masked = key[:6] + "..." + key[-4:] if len(key) > 10 else "***"
         return {"configured": True, "provider": provider, "maskedKey": masked}
 
+    # Placeholder / unset values that must never be treated as a real API key.
+    _PLACEHOLDER_KEYS = {
+        "your_llm_api_key_here", "your_api_key_here", "changeme", "none",
+        "your_gemini_api_key_here", "your_openai_api_key_here", "your_groq_api_key_here", ""
+    }
+
+    def _clean_key(self, value: Optional[str]) -> Optional[str]:
+        if not value:
+            return None
+        v = value.strip()
+        if not v or v.lower() in self._PLACEHOLDER_KEYS:
+            return None
+        return v
+
     def _resolve_api_key(self, explicit_key: Optional[str]) -> Optional[str]:
-        if explicit_key and explicit_key.strip():
-            return explicit_key.strip()
-        if self._runtime_api_key and self._runtime_api_key.strip():
-            return self._runtime_api_key.strip()
-        # Check environment variables
-        return (
-            os.getenv("GEMINI_API_KEY") or
-            os.getenv("LLM_API_KEY") or
-            os.getenv("OPENAI_API_KEY") or
-            os.getenv("GROQ_API_KEY") or
-            None
-        )
+        cleaned = self._clean_key(explicit_key)
+        if cleaned:
+            return cleaned
+        cleaned = self._clean_key(self._runtime_api_key)
+        if cleaned:
+            return cleaned
+        # Check environment variables, ignoring placeholder values
+        for env_name in ("GEMINI_API_KEY", "LLM_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY"):
+            cleaned = self._clean_key(os.getenv(env_name))
+            if cleaned:
+                return cleaned
+        return None
 
     def _detect_provider(self, key: str) -> str:
         if not key:
@@ -197,8 +211,8 @@ class CopilotEngine:
         context_str = self._build_context_summary(context)
         prompt = f"{context_str}\nUser Question: {query}\n\nRespond according to your system directives."
 
-        # Support both Gemini 2.0 Flash and Gemini 1.5 Flash
-        models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        # Current Gemini models confirmed available for generateContent on this key.
+        models_to_try = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3-flash-preview"]
         last_error = None
 
         with httpx.Client(timeout=20.0) as client:

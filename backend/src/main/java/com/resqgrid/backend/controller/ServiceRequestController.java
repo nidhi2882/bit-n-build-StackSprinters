@@ -34,6 +34,20 @@ public class ServiceRequestController {
         return ResponseEntity.ok(request);
     }
 
+    // Flat endpoint used by the "Request Mutual Aid" modal (incidentId is in the body).
+    @PostMapping("/api/service-requests")
+    public ResponseEntity<ServiceRequest> createServiceRequestFlat(
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        String incidentId = payload.get("incidentId");
+        String targetDepartment = payload.get("requestedDepartment");
+        String reason = payload.get("reason");
+        String urgency = payload.get("urgency");
+
+        ServiceRequest request = serviceRequestService.createServiceRequest(incidentId, targetDepartment, reason, urgency, currentUser);
+        return ResponseEntity.ok(request);
+    }
+
     @GetMapping("/api/service-requests/incoming")
     public ResponseEntity<List<ServiceRequest>> getIncomingRequests(@AuthenticationPrincipal UserPrincipal currentUser) {
         return ResponseEntity.ok(serviceRequestService.getIncomingRequests(currentUser));

@@ -524,6 +524,19 @@ public class IncidentService {
         Incident saved = incidentRepository.save(incident);
         mongoSyncService.syncIncident(saved);
 
+        // When an incident is completed (resolved) or cancelled, deactivate its alerts so the
+        // related notifications are removed from every department's notification panel.
+        if ("Resolved".equalsIgnoreCase(status) || "Cancelled".equalsIgnoreCase(status)) {
+            List<Alert> relatedAlerts = alertRepository.findByIncidentId(incidentId);
+            for (Alert a : relatedAlerts) {
+                if (Boolean.TRUE.equals(a.getActive())) {
+                    a.setActive(false);
+                    alertRepository.save(a);
+                    mongoSyncService.syncAlert(a);
+                }
+            }
+        }
+
         // Activity log for status update
         if (incidentActivityRepository != null) {
             String statusMsg;

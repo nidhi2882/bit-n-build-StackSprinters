@@ -285,6 +285,17 @@ public class ServiceRequestService {
         logActivity(req.getIncidentId(), String.format("Mutual Aid Service Request for %s RESOLVED.", req.getRequestedDepartment()),
                 currentUser != null ? currentUser.getUsername() : req.getRequestedDepartment());
 
+        // Deactivate the SERVICE_REQUEST alerts for this incident so the completed
+        // request's notification is cleared from department panels.
+        for (Alert a : alertRepository.findByIncidentId(req.getIncidentId())) {
+            String type = a.getType() != null ? a.getType().toUpperCase() : "";
+            if (Boolean.TRUE.equals(a.getActive()) && type.contains("SERVICE_REQUEST")) {
+                a.setActive(false);
+                alertRepository.save(a);
+                mongoSyncService.syncAlert(a);
+            }
+        }
+
         return saved;
     }
 

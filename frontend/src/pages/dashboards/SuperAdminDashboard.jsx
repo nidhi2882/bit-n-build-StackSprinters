@@ -39,9 +39,19 @@ export default function SuperAdminDashboard() {
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(loadData, 15000); // 15s live CAD polling
+        const interval = setInterval(loadData, 10000); // 10s live CAD polling
         return () => clearInterval(interval);
     }, []);
+
+    // Keep the open detail drawer synced with freshly polled data for real-time status.
+    useEffect(() => {
+        if (!selectedIncident) return;
+        const fresh = incidents.find((i) => i.id === selectedIncident.id);
+        if (fresh && fresh.status !== selectedIncident.status) {
+            setSelectedIncident(fresh);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [incidents]);
 
     const filteredIncidents = incidents.filter((inc) => {
         if (filterCategory === "ALL") return true;
