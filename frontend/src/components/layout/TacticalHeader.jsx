@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import NotificationPanel from "../common/NotificationPanel";
+import Reverse911BroadcastModal from "../modals/Reverse911BroadcastModal";
 
 export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCount = 3 }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [showBroadcastModal, setShowBroadcastModal] = useState(false);
     const [alarmActive, setAlarmActive] = useState(true);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -56,6 +58,16 @@ export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCoun
                             <span>+ Dispatch Unit</span>
                         </button>
                     )}
+
+                    <button
+                        onClick={() => setShowBroadcastModal(true)}
+                        className="inline-flex items-center gap-1.5 px-3 h-9 bg-red-600 hover:bg-red-500 text-white font-label-md text-xs font-bold rounded-lg shadow-sm transition-colors"
+                        type="button"
+                        title="Broadcast Geofenced Reverse-911 Alert"
+                    >
+                        <span className="material-symbols-outlined text-base">campaign</span>
+                        <span>Reverse 911</span>
+                    </button>
 
                     {/* Alarm Sound & Notifications Toggle */}
                     <div className="flex items-center gap-space-xs">
@@ -153,6 +165,13 @@ export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCoun
                     </div>
                 </div>
             </div>
+
+            {showBroadcastModal && (
+                <Reverse911BroadcastModal
+                    onClose={() => setShowBroadcastModal(false)}
+                    defaultCategory={deptCategory}
+                />
+            )}
         </header>
     );
 }
