@@ -1,6 +1,7 @@
 # 📡 ResQGrid API Specification
 
 **Version:** 1.0.0  
+**Live Frontend:** [https://bit-n-build-stack-sprinters.vercel.app](https://bit-n-build-stack-sprinters.vercel.app)  
 **Base URL:** `http://localhost:8080/api` (Spring Boot) / `http://localhost:3000/api/v1` (NestJS API Gateway)
 
 ---

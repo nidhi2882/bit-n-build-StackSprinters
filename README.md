@@ -4,11 +4,15 @@
 
 > *"From fragmented emergency information to coordinated response intelligence."*
 
+🌐 **Live Web Application:** [https://bit-n-build-stack-sprinters.vercel.app](https://bit-n-build-stack-sprinters.vercel.app)
+
 ---
 
-## 🎥 Demo Video & Presentation
+## 🌐 Live Deployment & Media
 
-▶️ **[Watch the ResQGrid demo](https://drive.google.com/file/d/1tI2c5Tru0btmVy3gLObA89w8CJBl0HKi/view?usp=sharing)**
+🚀 **Live Deployment:** **[https://bit-n-build-stack-sprinters.vercel.app](https://bit-n-build-stack-sprinters.vercel.app)**
+
+▶️ **[Watch the ResQGrid demo video](https://drive.google.com/file/d/1tI2c5Tru0btmVy3gLObA89w8CJBl0HKi/view?usp=sharing)**
 
 📊 **[View the pitch presentation (PPT)](https://docs.google.com/presentation/d/1XqqpVk9L0gO5S2kl14o8TphuRRGo4tC2/edit?usp=sharing&ouid=108215591275858216197&rtpof=true&sd=true)**
 
@@ -18,8 +22,9 @@ A full walkthrough of the platform — citizen reporting, AI-assisted triage, de
 
 ## 📋 Table of Contents
 
-1. [Overview](#1-overview)
-2. [The Problem (PS-9)](#2-the-problem-ps-9)
+1. [Live Deployment](#-live-deployment--media)
+2. [Overview](#1-overview)
+3. [The Problem (PS-9)](#2-the-problem-ps-9)
 3. [Key Features](#3-key-features)
 4. [System Architecture](#4-system-architecture)
 5. [Technology Stack](#5-technology-stack)
@@ -277,9 +282,9 @@ All 11 accounts are available as one-click quick-login buttons on the login scre
 
 Architecture and flow diagrams live in [`docs/architecture/`](docs/architecture):
 
-- `system-architecture.svg` — full service/layer architecture
-- `tech-stack.svg` — frameworks and libraries per service
-- `website-flow.svg` — authentication, role routing, and the incident lifecycle
+- `system-architecture.png` — full service/layer architecture
+- `tech-stack.png` — frameworks and libraries per service
+- `website-flow.png` — authentication, role routing, and the incident lifecycle
 
 ---
 
