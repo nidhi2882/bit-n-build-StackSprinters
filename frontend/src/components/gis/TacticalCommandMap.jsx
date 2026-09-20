@@ -51,7 +51,7 @@ export default function TacticalCommandMap({
 
                 {/* Layer Filters */}
                 <div className="pointer-events-auto flex items-center gap-1 bg-[#121927]/90 backdrop-blur-md p-1 rounded-lg border border-border-dark text-xs">
-                    {["ALL", "CRITICAL", "UNITS", "FLOOD", "FIRE"].map(f => (
+                    {["ALL", "CRITICAL", "UNITS", "FLOOD", "FIRE", "HEATMAP"].map(f => (
                         <button
                             key={f}
                             onClick={() => setLayerFilter(f)}
@@ -114,6 +114,28 @@ export default function TacticalCommandMap({
                                 {unit.callSign || `UNIT-${unit.id}`}
                             </span>
                         </div>
+                    );
+                })}
+
+                {/* Render Disaster Density Heatmap Halos (Phase 11) */}
+                {layerFilter === "HEATMAP" && filteredIncidents.map((inc, idx) => {
+                    const posX = 20 + ((idx * 23 + 11) % 68);
+                    const posY = 15 + ((idx * 19 + 7) % 72);
+                    const radius = (inc.severity || 3) * 50;
+                    return (
+                        <div
+                            key={`heatmap-${inc.id || idx}`}
+                            className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded-full blur-2xl opacity-70 transition-all duration-700"
+                            style={{
+                                left: `${posX}%`,
+                                top: `${posY}%`,
+                                width: `${radius * 2}px`,
+                                height: `${radius * 2}px`,
+                                background: inc.severity >= 4
+                                    ? 'radial-gradient(circle, rgba(239, 68, 68, 0.8) 0%, rgba(249, 115, 22, 0.45) 45%, transparent 70%)'
+                                    : 'radial-gradient(circle, rgba(234, 179, 8, 0.65) 0%, rgba(14, 165, 233, 0.35) 50%, transparent 70%)'
+                            }}
+                        />
                     );
                 })}
 
