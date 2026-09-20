@@ -116,4 +116,14 @@ public class MongoSyncService {
             log.warn("Failed to sync sub-type to MongoDB Atlas: {}", e.getMessage());
         }
     }
+
+    public void syncServiceRequest(ServiceRequest request) {
+        if (mongoTemplate == null || request == null) return;
+        try {
+            mongoTemplate.save(request, "service_requests");
+            log.info("ServiceRequest synced to MongoDB Atlas 'service_requests': REQ-{}", request.getId());
+        } catch (Exception e) {
+            log.warn("Failed to sync service request to MongoDB Atlas: {}", e.getMessage());
+        }
+    }
 }

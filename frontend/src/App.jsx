@@ -122,7 +122,23 @@ function AppContent() {
                 }
             />
 
-            {/* Department Admin Sub-Pages */}
+            {/* Department Scoped Incident Consoles & Sub-Pages */}
+            <Route
+                path="/department/:category"
+                element={
+                    <ProtectedRoute>
+                        <DepartmentAdminDashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/department"
+                element={
+                    <ProtectedRoute>
+                        <DepartmentAdminDashboard />
+                    </ProtectedRoute>
+                }
+            />
             <Route
                 path="/department/cross-dept-requests"
                 element={

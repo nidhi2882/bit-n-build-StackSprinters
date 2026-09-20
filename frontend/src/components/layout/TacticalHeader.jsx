@@ -5,7 +5,7 @@ import NotificationPanel from "../common/NotificationPanel";
 import Reverse911BroadcastModal from "../modals/Reverse911BroadcastModal";
 import CopilotDrawer from "../copilot/CopilotDrawer";
 
-export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCount = 3 }) {
+export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCount = 3, onToggleMobileSidebar }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -26,10 +26,20 @@ export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCoun
     };
 
     return (
-        <header className="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-surface-container-high">
-            <div className="h-16 w-full px-space-lg flex items-center justify-between gap-space-md">
-                {/* Left CAD Ticker & Quick Search */}
-                <div className="flex items-center gap-space-md flex-1 max-w-2xl">
+        <header className="fixed top-0 left-0 md:left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-surface-container-high">
+            <div className="h-16 w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-space-md">
+                {/* Mobile Menu Toggle & Left CAD Ticker & Quick Search */}
+                <div className="flex items-center gap-2 sm:gap-space-md flex-1 max-w-2xl">
+                    {onToggleMobileSidebar && (
+                        <button
+                            onClick={onToggleMobileSidebar}
+                            className="md:hidden p-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
+                            type="button"
+                            aria-label="Toggle Navigation Drawer"
+                        >
+                            <span className="material-symbols-outlined text-xl">menu</span>
+                        </button>
+                    )}
                     <div className="hidden xl:flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-error-container">
                         <span className="h-2 w-2 rounded-full bg-error animate-pulse"></span>
                         <span className="font-label-xs text-label-xs text-on-error-container uppercase font-semibold">

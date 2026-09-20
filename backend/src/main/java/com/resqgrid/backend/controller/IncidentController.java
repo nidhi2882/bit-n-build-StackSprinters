@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -21,17 +22,33 @@ public class IncidentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Incident>> getAllIncidents(@AuthenticationPrincipal UserPrincipal currentUser) {
-        if (currentUser != null) {
-            return ResponseEntity.ok(incidentService.getScopedIncidents(currentUser));
+    public ResponseEntity<?> getAllIncidents(
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String category,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        String dept = (department != null && !department.trim().isEmpty()) ? department : category;
+        try {
+            if (currentUser != null) {
+                return ResponseEntity.ok(incidentService.getScopedIncidents(currentUser, dept));
+            }
+            if (dept != null && !dept.trim().isEmpty()) {
+                return ResponseEntity.ok(incidentService.getIncidentsByDepartmentOrCategory(dept));
+            }
+            return ResponseEntity.ok(incidentService.getAllIncidents());
+        } catch (org.springframework.security.access.AccessDeniedException ade) {
+            return ResponseEntity.status(403).body(Collections.singletonMap("message", ade.getMessage()));
         }
-        return ResponseEntity.ok(incidentService.getAllIncidents());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Incident> getIncidentById(@PathVariable String id) {
+    public ResponseEntity<?> getIncidentById(@PathVariable String id, @AuthenticationPrincipal UserPrincipal currentUser) {
         return incidentService.getIncidentById(id)
-                .map(ResponseEntity::ok)
+                .map(incident -> {
+                    if (currentUser != null && !incidentService.isUserAuthorizedForIncident(incident, currentUser)) {
+                        return ResponseEntity.status(403).body(Collections.singletonMap("message", "Access Denied: You do not have permission to view incident " + id));
+                    }
+                    return ResponseEntity.ok(incident);
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -62,9 +79,14 @@ public class IncidentController {
     }
 
     @PatchMapping("/{id}/assign-unit")
-    public ResponseEntity<Incident> assignUnit(
+    public ResponseEntity<?> assignUnit(
             @PathVariable String id,
-            @RequestBody Map<String, String> payload) {
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Incident incident = incidentService.getIncidentById(id).orElse(null);
+        if (incident != null && currentUser != null && !incidentService.isUserAuthorizedForIncident(incident, currentUser)) {
+            return ResponseEntity.status(403).body(Collections.singletonMap("message", "Access Denied: You cannot assign units to an incident outside your jurisdiction"));
+        }
         String unitId = payload.get("unitId");
         if (unitId == null) {
             unitId = payload.get("resourceId");
@@ -73,9 +95,14 @@ public class IncidentController {
     }
 
     @PostMapping("/{id}/assign-resource")
-    public ResponseEntity<Incident> assignResource(
+    public ResponseEntity<?> assignResource(
             @PathVariable String id,
-            @RequestBody Map<String, String> payload) {
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Incident incident = incidentService.getIncidentById(id).orElse(null);
+        if (incident != null && currentUser != null && !incidentService.isUserAuthorizedForIncident(incident, currentUser)) {
+            return ResponseEntity.status(403).body(Collections.singletonMap("message", "Access Denied: You cannot assign resources to an incident outside your jurisdiction"));
+        }
         String resourceId = payload.get("resourceId");
         if (resourceId == null) {
             resourceId = payload.get("unitId");
@@ -84,17 +111,27 @@ public class IncidentController {
     }
 
     @PostMapping("/{id}/unassign-resource")
-    public ResponseEntity<Incident> unassignResource(
+    public ResponseEntity<?> unassignResource(
             @PathVariable String id,
-            @RequestBody Map<String, String> payload) {
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Incident incident = incidentService.getIncidentById(id).orElse(null);
+        if (incident != null && currentUser != null && !incidentService.isUserAuthorizedForIncident(incident, currentUser)) {
+            return ResponseEntity.status(403).body(Collections.singletonMap("message", "Access Denied: You cannot unassign resources from an incident outside your jurisdiction"));
+        }
         String resourceId = payload.get("resourceId");
         return ResponseEntity.ok(incidentService.unassignResource(id, resourceId));
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Incident> updateStatus(
+    public ResponseEntity<?> updateStatus(
             @PathVariable String id,
-            @RequestBody Map<String, String> payload) {
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Incident incident = incidentService.getIncidentById(id).orElse(null);
+        if (incident != null && currentUser != null && !incidentService.isUserAuthorizedForIncident(incident, currentUser)) {
+            return ResponseEntity.status(403).body(Collections.singletonMap("message", "Access Denied: You cannot update status of an incident outside your jurisdiction"));
+        }
         String status = payload.get("status");
         return ResponseEntity.ok(incidentService.updateStatus(id, status));
     }

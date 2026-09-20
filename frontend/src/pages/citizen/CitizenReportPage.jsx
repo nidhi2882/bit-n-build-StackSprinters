@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { reportService } from "../../services/reportService";
 import { useAuth } from "../../context/AuthContext";
+import { detectRouting } from "../../config/departmentRoutingConfig";
 
 export default function CitizenReportPage() {
     const navigate = useNavigate();
@@ -68,6 +69,11 @@ export default function CitizenReportPage() {
     const categories = [
         "FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE"
     ];
+
+    const routingPreview = useMemo(() => {
+        const text = `${title} ${description}`;
+        return detectRouting(text, category);
+    }, [title, description, category]);
 
     return (
         <div className="bg-background font-body-md text-on-surface antialiased min-h-screen">
@@ -157,6 +163,47 @@ export default function CitizenReportPage() {
                                 placeholder="Describe current status, number of persons injured or trapped, visible hazards, gas smell, power lines down..."
                                 className="w-full p-3 rounded-lg bg-surface-container-low text-on-surface text-sm border border-surface-container-high focus:ring-2 focus:ring-primary"
                             ></textarea>
+                        </div>
+
+                        {/* Auto-Routing & Secondary Dispatch Intelligence Preview */}
+                        <div className="p-3.5 rounded-xl bg-primary-fixed/20 border border-primary/30 flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                                    <span className="material-symbols-outlined text-sm animate-pulse">route</span>
+                                    <span>Intelligent Multi-Agency Auto-Routing</span>
+                                </div>
+                                <span className="font-code-tabular text-[11px] font-bold text-primary bg-primary-container/40 px-2 py-0.5 rounded border border-primary/20">
+                                    Target SLA: {routingPreview.slaMinutes}m
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap text-xs">
+                                <span className="text-on-surface-variant font-medium">Primary Dispatch:</span>
+                                <span className="px-2 py-0.5 rounded font-bold bg-primary text-on-primary font-code-tabular">
+                                    {routingPreview.primaryDepartment}
+                                </span>
+                                {routingPreview.secondaryDepartments.length > 0 && (
+                                    <>
+                                        <span className="text-on-surface-variant font-medium ml-1">Auto-Requested Mutual Aid:</span>
+                                        {routingPreview.secondaryDepartments.map(sec => (
+                                            <span key={sec} className="px-2 py-0.5 rounded bg-secondary-container text-secondary font-bold text-[11px]">
+                                                +{sec}
+                                            </span>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+
+                            {routingPreview.detectedKeywords.length > 0 && (
+                                <div className="text-[11px] text-on-surface-variant flex items-center gap-1 flex-wrap">
+                                    <span>Detected situational cues:</span>
+                                    {routingPreview.detectedKeywords.map(kw => (
+                                        <span key={kw} className="px-1.5 py-0.5 rounded bg-surface-container font-mono text-[10px] text-primary">
+                                            "{kw}"
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Severity Selector */}

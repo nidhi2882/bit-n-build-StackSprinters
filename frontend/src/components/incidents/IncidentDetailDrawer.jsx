@@ -302,6 +302,49 @@ export default function IncidentDetailDrawer({ incident, onClose, onUpdated, onR
                         </div>
                     </div>
 
+                    {/* Tactical Department Actions */}
+                    <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm space-y-2.5">
+                        <span className="font-label-sm text-label-sm font-bold text-on-surface block">
+                            Sector Tactical Directives
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => handleStatusChange("En Route")}
+                                disabled={loading}
+                                className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-base">directions_car</span>
+                                <span>Deploy / En-Route</span>
+                            </button>
+                            <button
+                                onClick={() => handleStatusChange("Arrived")}
+                                disabled={loading}
+                                className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-base">fmd_good</span>
+                                <span>Mark On-Scene</span>
+                            </button>
+                            <button
+                                onClick={() => handleStatusChange("Resolved")}
+                                disabled={loading}
+                                className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-base">task_alt</span>
+                                <span>Resolve Incident</span>
+                            </button>
+                            {onRequestMutualAid && (
+                                <button
+                                    onClick={() => onRequestMutualAid(incident)}
+                                    disabled={loading}
+                                    className="px-3 py-2 bg-secondary-container hover:bg-secondary text-on-secondary-container hover:text-on-secondary rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-base">handshake</span>
+                                    <span>Request Mutual Aid</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Incident Summary & AI Insights */}
                     <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm space-y-3">
                         <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold block">

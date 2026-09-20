@@ -40,6 +40,13 @@ public class IncidentService {
     private final ServiceRequestRepository serviceRequestRepository;
     private final IncidentActivityRepository incidentActivityRepository;
 
+    @Autowired(required = false)
+    private DepartmentRoutingService departmentRoutingService;
+
+    public void setDepartmentRoutingService(DepartmentRoutingService departmentRoutingService) {
+        this.departmentRoutingService = departmentRoutingService;
+    }
+
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentReportRepository incidentReportRepository,
                            ResourceRepository resourceRepository,
@@ -112,65 +119,40 @@ public class IncidentService {
     }
 
     public List<Incident> getScopedIncidents(com.resqgrid.backend.security.UserPrincipal user) {
+        return getScopedIncidents(user, null);
+    }
+
+    public List<Incident> getScopedIncidents(com.resqgrid.backend.security.UserPrincipal user, String requestedDepartment) {
         if (user == null) {
             return Collections.emptyList();
         }
 
         String role = user.getRole() != null ? user.getRole().toUpperCase().replace(" ", "_") : "CITIZEN";
+        String targetDept = (requestedDepartment != null && !requestedDepartment.trim().isEmpty())
+                ? requestedDepartment.toUpperCase().replace("CAT_", "").trim()
+                : null;
 
-        if ("ROLE_SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(role)) {
+        if ("ROLE_SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(role) || "AUTHORITY_ADMIN".equals(role) || "ROLE_AUTHORITY_ADMIN".equals(role)) {
+            if (targetDept != null && !targetDept.isEmpty()) {
+                return getDepartmentScopedIncidents(targetDept);
+            }
             return incidentRepository.findAllByOrderByReportedAtDesc();
-        } else if ("ROLE_DEPARTMENT_ADMIN".equals(role) || "DEPARTMENT_ADMIN".equals(role)) {
+        } else if ("ROLE_DEPARTMENT_ADMIN".equals(role) || "DEPARTMENT_ADMIN".equals(role) || "HOSPITAL_ADMIN".equals(role) || "ROLE_HOSPITAL_ADMIN".equals(role)) {
             String deptCategory = user.getDepartmentCategory();
             if (deptCategory == null || deptCategory.trim().isEmpty()) {
                 return incidentRepository.findAllByOrderByReportedAtDesc();
             }
 
             com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(deptCategory);
-            String catName = dc != null ? dc.name() : deptCategory.toUpperCase();
+            String userCat = dc != null ? dc.name() : deptCategory.toUpperCase().replace("CAT_", "").trim();
 
-            List<Incident> ownCategoryIncidents = incidentRepository.findByCategoryIgnoreCaseOrderByReportedAtDesc(catName);
-            if (ownCategoryIncidents.isEmpty()) {
-                List<String> types = getTypesForCategory(deptCategory);
-                ownCategoryIncidents = incidentRepository.findByTypeIgnoreCaseInOrderByReportedAtDesc(types);
+            // Strict backend authorization: Department admin cannot query another department's internal console
+            if (targetDept != null && !targetDept.isEmpty() && !targetDept.equalsIgnoreCase(userCat)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Access Denied: You do not have permission to view operations for department: " + targetDept);
             }
 
-            if (serviceRequestRepository == null) {
-                return ownCategoryIncidents;
-            }
-
-            // Fetch incidents granted strictly via ACCEPTED ServiceRequests targeting this department
-            List<String> deptVariants = Arrays.asList(catName, deptCategory, "CAT_" + catName);
-            List<com.resqgrid.backend.entity.ServiceRequest> acceptedRequests =
-                    serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInAndStatus(deptVariants, "ACCEPTED");
-
-            Set<String> acceptedIncidentIds = new HashSet<>();
-            for (com.resqgrid.backend.entity.ServiceRequest sr : acceptedRequests) {
-                if (sr.getIncidentId() != null) {
-                    acceptedIncidentIds.add(sr.getIncidentId());
-                }
-            }
-
-            if (acceptedIncidentIds.isEmpty()) {
-                return ownCategoryIncidents;
-            }
-
-            Set<String> existingIds = ownCategoryIncidents.stream().map(Incident::getId).collect(Collectors.toSet());
-            List<Incident> grantedIncidents = incidentRepository.findAllById(acceptedIncidentIds);
-
-            List<Incident> result = new ArrayList<>(ownCategoryIncidents);
-            for (Incident inc : grantedIncidents) {
-                if (!existingIds.contains(inc.getId())) {
-                    result.add(inc);
-                }
-            }
-
-            result.sort((a, b) -> {
-                if (a.getReportedAt() == null || b.getReportedAt() == null) return 0;
-                return b.getReportedAt().compareTo(a.getReportedAt());
-            });
-
-            return result;
+            return getDepartmentScopedIncidents(userCat);
         } else if ("ROLE_CITIZEN".equals(role) || "CITIZEN".equals(role)) {
             String userId = String.valueOf(user.getId());
             String email = user.getEmail();
@@ -191,6 +173,58 @@ public class IncidentService {
         }
 
         return incidentRepository.findAllByOrderByReportedAtDesc();
+    }
+
+    public List<Incident> getDepartmentScopedIncidents(String catName) {
+        List<Incident> ownCategoryIncidents = incidentRepository.findByCategoryIgnoreCaseOrderByReportedAtDesc(catName);
+        if (ownCategoryIncidents.isEmpty()) {
+            List<String> types = getTypesForCategory(catName);
+            ownCategoryIncidents = incidentRepository.findByTypeIgnoreCaseInOrderByReportedAtDesc(types);
+        }
+
+        if (serviceRequestRepository == null) {
+            return ownCategoryIncidents;
+        }
+
+        // Fetch incidents granted strictly via ACCEPTED ServiceRequests targeting this department
+        List<String> deptVariants = Arrays.asList(catName, "CAT_" + catName);
+        List<com.resqgrid.backend.entity.ServiceRequest> acceptedRequests =
+                serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInAndStatus(deptVariants, "ACCEPTED");
+
+        Set<String> acceptedIncidentIds = new HashSet<>();
+        for (com.resqgrid.backend.entity.ServiceRequest sr : acceptedRequests) {
+            if (sr.getIncidentId() != null) {
+                acceptedIncidentIds.add(sr.getIncidentId());
+            }
+        }
+
+        if (acceptedIncidentIds.isEmpty()) {
+            return ownCategoryIncidents;
+        }
+
+        Set<String> existingIds = ownCategoryIncidents.stream().map(Incident::getId).collect(Collectors.toSet());
+        List<Incident> grantedIncidents = incidentRepository.findAllById(acceptedIncidentIds);
+
+        List<Incident> result = new ArrayList<>(ownCategoryIncidents);
+        for (Incident inc : grantedIncidents) {
+            if (!existingIds.contains(inc.getId())) {
+                result.add(inc);
+            }
+        }
+
+        result.sort((a, b) -> {
+            if (a.getReportedAt() == null || b.getReportedAt() == null) return 0;
+            return b.getReportedAt().compareTo(a.getReportedAt());
+        });
+
+        return result;
+    }
+
+    public List<Incident> getIncidentsByDepartmentOrCategory(String department) {
+        if (department == null || department.trim().isEmpty()) {
+            return getAllIncidents();
+        }
+        return getDepartmentScopedIncidents(department.toUpperCase().replace("CAT_", "").trim());
     }
 
     @Transactional
@@ -327,6 +361,15 @@ public class IncidentService {
         }
         if (incident.getDuplicateCount() == null) {
             incident.setDuplicateCount(0);
+        }
+
+        // Apply centralized Department Routing Engine (Primary Department, Support Requests, Resources, SLA)
+        if (departmentRoutingService != null) {
+            try {
+                departmentRoutingService.applyRoutingAndGenerateSupportRequests(incident);
+            } catch (Exception e) {
+                // Non-blocking fallback
+            }
         }
 
         // Auto-assign default capabilities if not provided based on type
