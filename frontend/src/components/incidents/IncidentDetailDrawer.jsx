@@ -119,6 +119,13 @@ export default function IncidentDetailDrawer({ incident, onClose, onUpdated, onR
                                 {incident.id}
                             </div>
                             {getSeverityBadge(incident.severity || 4)}
+                            <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${
+                                (incident.severity || 4) >= 5
+                                    ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                    : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            }`}>
+                                {(incident.severity || 4) >= 5 ? "SLA 5m Breach Timer" : "SLA 15m Target"}
+                            </span>
                         </div>
 
                         <div className="flex items-center gap-space-xs">

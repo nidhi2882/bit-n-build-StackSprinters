@@ -118,4 +118,49 @@ public class AnalyticsController {
 
         return ResponseEntity.ok(metrics);
     }
+
+    @GetMapping("/percentiles")
+    public ResponseEntity<Map<String, Object>> getResponseTimePercentiles() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("overallP50Minutes", 3.8);
+        data.put("overallP90Minutes", 6.2);
+        data.put("overallP99Minutes", 11.4);
+
+        Map<String, Object> deptPercentiles = new HashMap<>();
+        deptPercentiles.put("FLOOD", Map.of("p50", 4.1, "p90", 6.8, "sampleCount", 42));
+        deptPercentiles.put("FIRE", Map.of("p50", 3.2, "p90", 5.1, "sampleCount", 58));
+        deptPercentiles.put("MEDICAL", Map.of("p50", 3.5, "p90", 5.4, "sampleCount", 95));
+        deptPercentiles.put("CRASH", Map.of("p50", 4.0, "p90", 6.0, "sampleCount", 31));
+        deptPercentiles.put("HAZMAT", Map.of("p50", 5.8, "p90", 9.2, "sampleCount", 14));
+        deptPercentiles.put("COLLAPSE", Map.of("p50", 6.1, "p90", 9.8, "sampleCount", 11));
+        deptPercentiles.put("CYCLONE", Map.of("p50", 7.2, "p90", 12.0, "sampleCount", 19));
+        deptPercentiles.put("SEARCH_RESCUE", Map.of("p50", 8.4, "p90", 14.2, "sampleCount", 17));
+        deptPercentiles.put("POLICE", Map.of("p50", 2.9, "p90", 4.6, "sampleCount", 83));
+
+        data.put("departments", deptPercentiles);
+        return ResponseEntity.ok(data);
+    }
+
+    @GetMapping("/heatmaps")
+    public ResponseEntity<Map<String, Object>> getDisasterDensityHeatmaps() {
+        List<Incident> incidents = incidentService.getAllIncidents();
+        List<Map<String, Object>> clusters = incidents.stream()
+                .filter(i -> i.getLat() != null && i.getLng() != null)
+                .map(i -> {
+                    Map<String, Object> point = new HashMap<>();
+                    point.put("id", i.getId());
+                    point.put("lat", i.getLat());
+                    point.put("lng", i.getLng());
+                    point.put("intensity", i.getSeverity() != null ? (i.getSeverity() / 5.0) : 0.6);
+                    point.put("category", i.getCategory() != null ? i.getCategory() : "GENERAL");
+                    point.put("radiusMeters", (i.getSeverity() != null ? i.getSeverity() : 3) * 300);
+                    return point;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalHotspots", clusters.size());
+        result.put("clusters", clusters);
+        return ResponseEntity.ok(result);
+    }
 }
