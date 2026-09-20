@@ -3,12 +3,14 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import NotificationPanel from "../common/NotificationPanel";
 import Reverse911BroadcastModal from "../modals/Reverse911BroadcastModal";
+import CopilotDrawer from "../copilot/CopilotDrawer";
 
 export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCount = 3 }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+    const [copilotOpen, setCopilotOpen] = useState(false);
     const [alarmActive, setAlarmActive] = useState(true);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -67,6 +69,20 @@ export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCoun
                     >
                         <span className="material-symbols-outlined text-base">campaign</span>
                         <span>Reverse 911</span>
+                    </button>
+
+                    <button
+                        onClick={() => setCopilotOpen(!copilotOpen)}
+                        className={`inline-flex items-center gap-1.5 px-3 h-9 font-label-md text-xs font-bold rounded-lg border transition-colors ${
+                            copilotOpen
+                                ? "bg-primary text-white border-primary shadow-sm"
+                                : "bg-primary/10 hover:bg-primary/20 text-primary border-primary/30"
+                        }`}
+                        type="button"
+                        title="AI Emergency Copilot & SOP Vector Store"
+                    >
+                        <span className="material-symbols-outlined text-base">smart_toy</span>
+                        <span>AI Copilot</span>
                     </button>
 
                     {/* Alarm Sound & Notifications Toggle */}
@@ -172,6 +188,12 @@ export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCoun
                     defaultCategory={deptCategory}
                 />
             )}
+
+            <CopilotDrawer
+                isOpen={copilotOpen}
+                onClose={() => setCopilotOpen(false)}
+                category={deptCategory}
+            />
         </header>
     );
 }
