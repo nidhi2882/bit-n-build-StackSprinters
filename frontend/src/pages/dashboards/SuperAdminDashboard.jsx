@@ -6,6 +6,8 @@ import TacticalHeader from "../../components/layout/TacticalHeader";
 import TacticalSidebar from "../../components/layout/TacticalSidebar";
 import IncidentDetailDrawer from "../../components/incidents/IncidentDetailDrawer";
 import NewServiceRequestModal from "../../components/modals/NewServiceRequestModal";
+import TacticalCommandMap from "../../components/gis/TacticalCommandMap";
+import socketService from "../../services/socketService";
 
 export default function SuperAdminDashboard() {
     const [incidents, setIncidents] = useState([]);
@@ -14,6 +16,7 @@ export default function SuperAdminDashboard() {
     const [selectedIncident, setSelectedIncident] = useState(null);
     const [mutualAidIncident, setMutualAidIncident] = useState(null);
     const [filterCategory, setFilterCategory] = useState("ALL");
+    const [viewMode, setViewMode] = useState("split"); // "split" | "map" | "table"
     const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
@@ -234,24 +237,68 @@ export default function SuperAdminDashboard() {
                             </div>
                         </div>
 
-                        {/* 3. Category Filter Chips */}
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                            {["ALL", "FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE"].map((cat) => (
+                        {/* 3. Category Filter Chips & View Mode Switcher */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+                            <div className="flex items-center gap-2 overflow-x-auto">
+                                {["ALL", "FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE"].map((cat) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setFilterCategory(cat)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                                            filterCategory === cat
+                                                ? "bg-primary text-on-primary shadow-sm"
+                                                : "bg-surface-container-lowest hover:bg-surface-container text-on-surface border border-surface-container-high"
+                                        }`}
+                                    >
+                                        {cat === "ALL" ? "All Departments" : cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* View Switcher */}
+                            <div className="flex items-center gap-1 bg-surface-container-lowest border border-surface-container-high p-1 rounded-lg self-end sm:self-auto">
                                 <button
-                                    key={cat}
-                                    onClick={() => setFilterCategory(cat)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                                        filterCategory === cat
-                                            ? "bg-primary text-on-primary shadow-sm"
-                                            : "bg-surface-container-lowest hover:bg-surface-container text-on-surface border border-surface-container-high"
+                                    onClick={() => setViewMode("split")}
+                                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                                        viewMode === "split" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"
                                     }`}
                                 >
-                                    {cat === "ALL" ? "All Departments" : cat}
+                                    <span className="material-symbols-outlined text-sm">dashboard</span>
+                                    Split View
                                 </button>
-                            ))}
+                                <button
+                                    onClick={() => setViewMode("map")}
+                                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                                        viewMode === "map" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-sm">map</span>
+                                    Vector Map
+                                </button>
+                                <button
+                                    onClick={() => setViewMode("table")}
+                                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                                        viewMode === "table" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-sm">table_rows</span>
+                                    CAD Feed
+                                </button>
+                            </div>
                         </div>
 
+                        {/* Tactical GIS Vector Radar Map (Phase 7) */}
+                        {(viewMode === "split" || viewMode === "map") && (
+                            <TacticalCommandMap
+                                incidents={filteredIncidents}
+                                units={units}
+                                selectedIncident={selectedIncident}
+                                onSelectIncident={(inc) => setSelectedIncident(inc)}
+                            />
+                        )}
+
                         {/* 4. Live CAD Operations Feed Table */}
+                        {(viewMode === "split" || viewMode === "table") && (
                         <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container-high overflow-hidden">
                             <div className="p-space-md border-b border-surface-container-high flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -345,6 +392,7 @@ export default function SuperAdminDashboard() {
                                 </table>
                             </div>
                         </div>
+                        )}
                     </div>
                 </main>
             </div>
