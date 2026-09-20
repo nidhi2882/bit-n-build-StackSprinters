@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL 16 Relational Storage
+  postgres:
+    image: postgres:16-alpine
+    container_name: resqgrid-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: resqgrid_db
+      POSTGRES_USER: resqgrid
+      POSTGRES_PASSWORD: resqgrid_secure_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resqgrid -d resqgrid_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resqgrid-net
+
+  # 2. Redis 7 Telemetry & Room Broker
+  redis:
+    image: redis:7-alpine
+    container_name: resqgrid-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resqgrid-net
+
+  # 3. Python FastAPI AI Microservice (NLP, RAG, Severity, Deduplication)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: resqgrid-ai-service
+    restart: unless-stopped
+    environment:
+      - PORT=5000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - resqgrid-net
+
+  # 4. Spring Boot 2.7.18 Java CAD Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: resqgrid-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resqgrid_db
+      - SPRING_DATASOURCE_USERNAME=resqgrid
+      - SPRING_DATASOURCE_PASSWORD=resqgrid_secure_pass
+      - AI_SERVICE_URL=http://ai-service:5000/api
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/taxonomy/categories || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resqgrid-net
+
+  # 5. React Vite + Tailwind Web Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: resqgrid-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+      - VITE_AI_SERVICE_BASE_URL=http://localhost:5000/api
+    ports:
+      - "80:80"
+      - "5173:80"
+    networks:
+      - resqgrid-net
+
+networks:
+  resqgrid-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
