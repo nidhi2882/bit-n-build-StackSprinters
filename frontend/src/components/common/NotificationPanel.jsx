@@ -1,8 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import slaService from "../../services/slaService";
 
 export default function NotificationPanel({ onClose }) {
     const [activeTab, setActiveTab] = useState("all");
+    const [evaluating, setEvaluating] = useState(false);
+    const [slaMetrics, setSlaMetrics] = useState(null);
     const [notifications, setNotifications] = useState([
+        {
+            id: "N-SLA-01",
+            type: "sla",
+            title: "SLA Threshold Monitor Active",
+            body: "Monitoring Level-5 Critical (5m SLA) and Level-4 High (15m SLA) dispatch timers across all 9 departments.",
+            time: "Live",
+            cad: "SLA-ENGINE",
+            location: "CAD Core",
+            icon: "timer",
+            unread: true,
+        },
         {
             id: "N1",
             type: "critical",
@@ -46,19 +60,39 @@ export default function NotificationPanel({ onClose }) {
             location: "Central CAD",
             icon: "monitoring",
             unread: false,
-        },
-        {
-            id: "N5",
-            type: "system",
-            title: "USAR Collapse Sensor Online",
-            body: "Structural seismic vibration sensors connected in Sector 2 Commercial District.",
-            time: "1h ago",
-            cad: "SYS-09",
-            location: "Alkapuri Complex",
-            icon: "cloud_sync",
-            unread: false,
         }
     ]);
+
+    useEffect(() => {
+        slaService.getStatus()
+            .then(data => setSlaMetrics(data))
+            .catch(() => console.log("SLA status polling"));
+    }, []);
+
+    const handleTriggerSla = async () => {
+        try {
+            setEvaluating(true);
+            const result = await slaService.triggerEvaluation();
+            setNotifications(prev => [
+                {
+                    id: `SLA-${Date.now()}`,
+                    type: "sla",
+                    title: `SLA Evaluation Cycle Executed`,
+                    body: `Evaluated active CAD incidents. Breaches triggered: ${result.breachesTriggered || 0}, Warnings: ${result.warningsTriggered || 0}.`,
+                    time: "Just now",
+                    cad: "SLA-EVAL",
+                    location: "Automated Worker",
+                    icon: "schedule",
+                    unread: true
+                },
+                ...prev
+            ]);
+        } catch (err) {
+            console.error("Failed to run SLA evaluation", err);
+        } finally {
+            setEvaluating(false);
+        }
+    };
 
     const markAllRead = () => {
         setNotifications(notifications.map(n => ({ ...n, unread: false })));
@@ -74,12 +108,12 @@ export default function NotificationPanel({ onClose }) {
     });
 
     const unreadCount = notifications.filter(n => n.unread).length;
+    const slaCount = notifications.filter(n => n.type === "sla").length;
     const criticalCount = notifications.filter(n => n.type === "critical").length;
     const requestsCount = notifications.filter(n => n.type === "requests").length;
-    const systemCount = notifications.filter(n => n.type === "system").length;
 
     return (
-        <div className="w-[420px] max-w-[calc(100vw-32px)] bg-surface-container-lowest rounded-2xl shadow-2xl border border-surface-container-high overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="w-[430px] max-w-[calc(100vw-32px)] bg-surface-container-lowest rounded-2xl shadow-2xl border border-surface-container-high overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
             {/* Header */}
             <div className="p-space-md border-b border-surface-container-high bg-surface-container-lowest">
                 <div className="flex items-center justify-between">
@@ -94,6 +128,15 @@ export default function NotificationPanel({ onClose }) {
                         )}
                     </div>
                     <div className="flex items-center gap-1">
+                        <button
+                            onClick={handleTriggerSla}
+                            disabled={evaluating}
+                            className="p-1 rounded text-primary hover:bg-primary/10 transition-colors text-xs font-medium flex items-center gap-1"
+                            title="Trigger SLA evaluation worker"
+                        >
+                            <span className={`material-symbols-outlined text-base ${evaluating ? "animate-spin" : ""}`}>refresh</span>
+                            <span className="font-mono text-[10px] hidden sm:inline">Check SLA</span>
+                        </button>
                         <button
                             onClick={markAllRead}
                             className="p-1 rounded text-on-surface-variant hover:text-primary transition-colors text-xs font-medium"
@@ -123,6 +166,16 @@ export default function NotificationPanel({ onClose }) {
                         All ({notifications.length})
                     </button>
                     <button
+                        onClick={() => setActiveTab("sla")}
+                        className={`flex-1 py-1 rounded text-label-xs font-semibold transition-all ${
+                            activeTab === "sla"
+                                ? "bg-surface-container-lowest text-on-surface shadow-sm"
+                                : "text-on-surface-variant hover:text-on-surface"
+                        }`}
+                    >
+                        SLA ({slaCount})
+                    </button>
+                    <button
                         onClick={() => setActiveTab("critical")}
                         className={`flex-1 py-1 rounded text-label-xs font-semibold transition-all ${
                             activeTab === "critical"
@@ -143,17 +196,7 @@ export default function NotificationPanel({ onClose }) {
                                 : "text-on-surface-variant hover:text-on-surface"
                         }`}
                     >
-                        Requests ({requestsCount})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("system")}
-                        className={`flex-1 py-1 rounded text-label-xs font-semibold transition-all ${
-                            activeTab === "system"
-                                ? "bg-surface-container-lowest text-on-surface shadow-sm"
-                                : "text-on-surface-variant hover:text-on-surface"
-                        }`}
-                    >
-                        System ({systemCount})
+                        Aid ({requestsCount})
                     </button>
                 </nav>
             </div>
@@ -170,7 +213,9 @@ export default function NotificationPanel({ onClose }) {
                         <article
                             key={n.id}
                             className={`p-space-md transition-colors flex gap-space-sm items-start relative ${
-                                n.type === "critical"
+                                n.type === "sla"
+                                    ? "bg-amber-500/10 hover:bg-amber-500/15"
+                                    : n.type === "critical"
                                     ? "bg-error-container/15 hover:bg-error-container/25"
                                     : "bg-surface-container-lowest hover:bg-surface-container-low/60"
                             }`}
@@ -179,59 +224,45 @@ export default function NotificationPanel({ onClose }) {
                                 <div
                                     className="w-2 h-2 rounded-full bg-primary absolute left-2 top-5 ring-2 ring-surface-container-lowest"
                                     title="Unread"
-                                ></div>
+                                />
                             )}
-                            <div
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                                    n.type === "critical"
-                                        ? "bg-error-container text-on-error-container"
-                                        : n.type === "requests"
-                                        ? "bg-secondary-container text-on-secondary-container"
-                                        : "bg-surface-container-high text-on-surface"
-                                }`}
-                            >
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                n.type === "sla"
+                                    ? "bg-amber-500/20 text-amber-400"
+                                    : n.type === "critical"
+                                    ? "bg-error-container text-on-error-container"
+                                    : "bg-surface-container-high text-on-surface-variant"
+                            }`}>
                                 <span className="material-symbols-outlined text-lg">{n.icon}</span>
                             </div>
-
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-space-xs">
-                                    <span
-                                        className={`font-label-xs text-label-xs uppercase font-bold tracking-wider ${
-                                            n.type === "critical"
-                                                ? "text-error"
-                                                : n.type === "requests"
-                                                ? "text-secondary"
-                                                : "text-on-surface-variant"
-                                        }`}
-                                    >
-                                        {n.type}
-                                    </span>
-                                    <span className="font-code-tabular text-label-xs text-on-surface-variant">
+                                <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                                    <h4 className="font-body-sm text-body-sm font-semibold text-on-surface truncate">
+                                        {n.title}
+                                    </h4>
+                                    <time className="font-code-tabular text-label-xs text-on-surface-variant shrink-0">
                                         {n.time}
-                                    </span>
+                                    </time>
                                 </div>
-                                <h4 className="font-headline-sm text-body-md font-semibold text-on-surface mt-0.5 leading-snug">
-                                    {n.title}
-                                </h4>
-                                <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-relaxed">
+                                <p className="font-body-xs text-body-xs text-on-surface-variant line-clamp-2 mb-2">
                                     {n.body}
                                 </p>
-                                <div className="flex items-center gap-2 mt-2 font-label-xs text-label-xs text-on-surface-variant">
-                                    <span className="material-symbols-outlined text-xs">location_on</span>
-                                    <span>{n.location}</span>
-                                    <span>•</span>
-                                    <span className="font-code-tabular font-bold text-primary">{n.cad}</span>
-                                </div>
-
-                                <div className="flex items-center gap-space-xs mt-3">
-                                    <button
-                                        onClick={() => dismiss(n.id)}
-                                        className="px-space-sm py-1 bg-surface-container-low hover:bg-surface-container text-on-surface font-label-xs text-label-xs rounded font-medium transition-colors"
-                                    >
-                                        Dismiss
-                                    </button>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface font-code-tabular text-[11px] font-semibold">
+                                        {n.cad}
+                                    </span>
+                                    <span className="font-body-xs text-body-xs text-on-surface-variant truncate">
+                                        • {n.location}
+                                    </span>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => dismiss(n.id)}
+                                className="opacity-0 group-hover:opacity-100 hover:opacity-100 p-1 text-on-surface-variant hover:text-on-surface"
+                                title="Dismiss"
+                            >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
                         </article>
                     ))
                 )}
