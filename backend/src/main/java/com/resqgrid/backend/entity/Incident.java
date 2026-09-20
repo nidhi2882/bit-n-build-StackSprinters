@@ -78,6 +78,52 @@ public class Incident {
     @Column(name = "resource_id")
     private List<String> assignedResourceIds = new ArrayList<>();
 
+    @Column(name = "primary_department")
+    private String primaryDepartment;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "incident_assigned_departments", joinColumns = @JoinColumn(name = "incident_id"))
+    @Column(name = "department")
+    private List<String> assignedDepartments = new ArrayList<>();
+
+    @Column(name = "original_type")
+    private String originalType;
+
+    @Column(name = "parent_incident_id")
+    private String parentIncidentId;
+
+    @Column(name = "affected_people")
+    private Integer affectedPeople = 0;
+
+    @Column(name = "casualties")
+    private Integer casualties = 0;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "incident_required_resources", joinColumns = @JoinColumn(name = "incident_id"))
+    @Column(name = "resource_type")
+    private List<String> requiredResources = new ArrayList<>();
+
+    @Column(name = "acknowledged_at")
+    private LocalDateTime acknowledgedAt;
+
+    @Column(name = "dispatched_at")
+    private LocalDateTime dispatchedAt;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
+    @Column(name = "sla_minutes")
+    private Integer slaMinutes = 10;
+
+    @Column(name = "sla_deadline")
+    private LocalDateTime slaDeadline;
+
+    @Column(name = "source")
+    private String source = "CITIZEN_PORTAL";
+
+    @Column(name = "ai_recommendations", columnDefinition = "TEXT")
+    private String aiRecommendations;
+
     @Column(name = "is_merged")
     private Boolean isMerged = false;
 
@@ -212,6 +258,54 @@ public class Incident {
     }
     public void setAssignedResourceIds(List<String> assignedResourceIds) { this.assignedResourceIds = assignedResourceIds; }
 
+    public String getPrimaryDepartment() { return primaryDepartment; }
+    public void setPrimaryDepartment(String primaryDepartment) { this.primaryDepartment = primaryDepartment; }
+
+    public List<String> getAssignedDepartments() {
+        if (assignedDepartments == null) assignedDepartments = new ArrayList<>();
+        return assignedDepartments;
+    }
+    public void setAssignedDepartments(List<String> assignedDepartments) { this.assignedDepartments = assignedDepartments; }
+
+    public String getOriginalType() { return originalType; }
+    public void setOriginalType(String originalType) { this.originalType = originalType; }
+
+    public String getParentIncidentId() { return parentIncidentId; }
+    public void setParentIncidentId(String parentIncidentId) { this.parentIncidentId = parentIncidentId; }
+
+    public Integer getAffectedPeople() { return affectedPeople; }
+    public void setAffectedPeople(Integer affectedPeople) { this.affectedPeople = affectedPeople; }
+
+    public Integer getCasualties() { return casualties; }
+    public void setCasualties(Integer casualties) { this.casualties = casualties; }
+
+    public List<String> getRequiredResources() {
+        if (requiredResources == null) requiredResources = new ArrayList<>();
+        return requiredResources;
+    }
+    public void setRequiredResources(List<String> requiredResources) { this.requiredResources = requiredResources; }
+
+    public LocalDateTime getAcknowledgedAt() { return acknowledgedAt; }
+    public void setAcknowledgedAt(LocalDateTime acknowledgedAt) { this.acknowledgedAt = acknowledgedAt; }
+
+    public LocalDateTime getDispatchedAt() { return dispatchedAt; }
+    public void setDispatchedAt(LocalDateTime dispatchedAt) { this.dispatchedAt = dispatchedAt; }
+
+    public LocalDateTime getResolvedAt() { return resolvedAt; }
+    public void setResolvedAt(LocalDateTime resolvedAt) { this.resolvedAt = resolvedAt; }
+
+    public Integer getSlaMinutes() { return slaMinutes; }
+    public void setSlaMinutes(Integer slaMinutes) { this.slaMinutes = slaMinutes; }
+
+    public LocalDateTime getSlaDeadline() { return slaDeadline; }
+    public void setSlaDeadline(LocalDateTime slaDeadline) { this.slaDeadline = slaDeadline; }
+
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
+
+    public String getAiRecommendations() { return aiRecommendations; }
+    public void setAiRecommendations(String aiRecommendations) { this.aiRecommendations = aiRecommendations; }
+
     public Boolean getIsMerged() { return isMerged; }
     public void setIsMerged(Boolean isMerged) { this.isMerged = isMerged; }
 
@@ -244,6 +338,20 @@ public class Incident {
         private String assignedUnitId;
         private List<String> requiredCapabilities = new ArrayList<>();
         private List<String> assignedResourceIds = new ArrayList<>();
+        private String primaryDepartment;
+        private List<String> assignedDepartments = new ArrayList<>();
+        private String originalType;
+        private String parentIncidentId;
+        private Integer affectedPeople = 0;
+        private Integer casualties = 0;
+        private List<String> requiredResources = new ArrayList<>();
+        private LocalDateTime acknowledgedAt;
+        private LocalDateTime dispatchedAt;
+        private LocalDateTime resolvedAt;
+        private Integer slaMinutes = 10;
+        private LocalDateTime slaDeadline;
+        private String source = "CITIZEN_PORTAL";
+        private String aiRecommendations;
         private Boolean isMerged = false;
         private String mergedIntoIncidentId;
 
@@ -269,11 +377,40 @@ public class Incident {
         public IncidentBuilder assignedUnitId(String assignedUnitId) { this.assignedUnitId = assignedUnitId; return this; }
         public IncidentBuilder requiredCapabilities(List<String> requiredCapabilities) { this.requiredCapabilities = requiredCapabilities; return this; }
         public IncidentBuilder assignedResourceIds(List<String> assignedResourceIds) { this.assignedResourceIds = assignedResourceIds; return this; }
+        public IncidentBuilder primaryDepartment(String primaryDepartment) { this.primaryDepartment = primaryDepartment; return this; }
+        public IncidentBuilder assignedDepartments(List<String> assignedDepartments) { this.assignedDepartments = assignedDepartments; return this; }
+        public IncidentBuilder originalType(String originalType) { this.originalType = originalType; return this; }
+        public IncidentBuilder parentIncidentId(String parentIncidentId) { this.parentIncidentId = parentIncidentId; return this; }
+        public IncidentBuilder affectedPeople(Integer affectedPeople) { this.affectedPeople = affectedPeople; return this; }
+        public IncidentBuilder casualties(Integer casualties) { this.casualties = casualties; return this; }
+        public IncidentBuilder requiredResources(List<String> requiredResources) { this.requiredResources = requiredResources; return this; }
+        public IncidentBuilder acknowledgedAt(LocalDateTime acknowledgedAt) { this.acknowledgedAt = acknowledgedAt; return this; }
+        public IncidentBuilder dispatchedAt(LocalDateTime dispatchedAt) { this.dispatchedAt = dispatchedAt; return this; }
+        public IncidentBuilder resolvedAt(LocalDateTime resolvedAt) { this.resolvedAt = resolvedAt; return this; }
+        public IncidentBuilder slaMinutes(Integer slaMinutes) { this.slaMinutes = slaMinutes; return this; }
+        public IncidentBuilder slaDeadline(LocalDateTime slaDeadline) { this.slaDeadline = slaDeadline; return this; }
+        public IncidentBuilder source(String source) { this.source = source; return this; }
+        public IncidentBuilder aiRecommendations(String aiRecommendations) { this.aiRecommendations = aiRecommendations; return this; }
         public IncidentBuilder isMerged(Boolean isMerged) { this.isMerged = isMerged; return this; }
         public IncidentBuilder mergedIntoIncidentId(String mergedIntoIncidentId) { this.mergedIntoIncidentId = mergedIntoIncidentId; return this; }
 
         public Incident build() {
-            return new Incident(id, title, type, category, description, severity, status, locationName, lat, lng, reportedAt, reporterId, reporterRole, reporterName, reporterEmail, reporterPhone, aiSummary, aiConfidence, duplicateCount, assignedUnitId, requiredCapabilities, assignedResourceIds, isMerged, mergedIntoIncidentId);
+            Incident inc = new Incident(id, title, type, category, description, severity, status, locationName, lat, lng, reportedAt, reporterId, reporterRole, reporterName, reporterEmail, reporterPhone, aiSummary, aiConfidence, duplicateCount, assignedUnitId, requiredCapabilities, assignedResourceIds, isMerged, mergedIntoIncidentId);
+            inc.setPrimaryDepartment(primaryDepartment);
+            inc.setAssignedDepartments(assignedDepartments);
+            inc.setOriginalType(originalType);
+            inc.setParentIncidentId(parentIncidentId);
+            inc.setAffectedPeople(affectedPeople);
+            inc.setCasualties(casualties);
+            inc.setRequiredResources(requiredResources);
+            inc.setAcknowledgedAt(acknowledgedAt);
+            inc.setDispatchedAt(dispatchedAt);
+            inc.setResolvedAt(resolvedAt);
+            inc.setSlaMinutes(slaMinutes);
+            inc.setSlaDeadline(slaDeadline);
+            inc.setSource(source);
+            inc.setAiRecommendations(aiRecommendations);
+            return inc;
         }
     }
 }

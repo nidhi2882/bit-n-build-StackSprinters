@@ -35,6 +35,15 @@ public class ServiceRequest {
     @Column(name = "decline_reason")
     private String declineReason;
 
+    @Column(name = "requested_resources")
+    private String requestedResources;
+
+    @Column(name = "accepted_at")
+    private LocalDateTime acceptedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -106,6 +115,15 @@ public class ServiceRequest {
     public String getDeclineReason() { return declineReason; }
     public void setDeclineReason(String declineReason) { this.declineReason = declineReason; }
 
+    public String getRequestedResources() { return requestedResources; }
+    public void setRequestedResources(String requestedResources) { this.requestedResources = requestedResources; }
+
+    public LocalDateTime getAcceptedAt() { return acceptedAt; }
+    public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
+
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -124,6 +142,9 @@ public class ServiceRequest {
         private String status;
         private String assignedUnitId;
         private String declineReason;
+        private String requestedResources;
+        private LocalDateTime acceptedAt;
+        private LocalDateTime completedAt;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -136,11 +157,18 @@ public class ServiceRequest {
         public ServiceRequestBuilder status(String status) { this.status = status; return this; }
         public ServiceRequestBuilder assignedUnitId(String assignedUnitId) { this.assignedUnitId = assignedUnitId; return this; }
         public ServiceRequestBuilder declineReason(String declineReason) { this.declineReason = declineReason; return this; }
+        public ServiceRequestBuilder requestedResources(String requestedResources) { this.requestedResources = requestedResources; return this; }
+        public ServiceRequestBuilder acceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; return this; }
+        public ServiceRequestBuilder completedAt(LocalDateTime completedAt) { this.completedAt = completedAt; return this; }
         public ServiceRequestBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public ServiceRequestBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public ServiceRequest build() {
-            return new ServiceRequest(id, incidentId, requestedByDepartment, requestedDepartment, reason, urgency, status, assignedUnitId, declineReason, createdAt, updatedAt);
+            ServiceRequest req = new ServiceRequest(id, incidentId, requestedByDepartment, requestedDepartment, reason, urgency, status, assignedUnitId, declineReason, createdAt, updatedAt);
+            req.setRequestedResources(requestedResources);
+            req.setAcceptedAt(acceptedAt);
+            req.setCompletedAt(completedAt);
+            return req;
         }
     }
 }

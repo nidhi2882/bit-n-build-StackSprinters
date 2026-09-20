@@ -2,15 +2,24 @@ import { apiClient } from "./api";
 import { mockIncidents } from "../mock/mockIncidents";
 
 export const incidentService = {
-    // Fetch all incidents
-    getIncidents: async () => {
+    // Fetch all incidents with optional department/category scoping
+    getIncidents: async (params = {}) => {
         try {
-            const response = await apiClient.get("/incidents");
+            const response = await apiClient.get("/incidents", { params });
             return response.data;
         } catch (error) {
             console.warn("Backend API /incidents unreachable. Using mock data.");
+            if (params.department || params.category) {
+                const filterDept = (params.department || params.category).toUpperCase();
+                return mockIncidents.filter(i => (i.category || i.type || "").toUpperCase().includes(filterDept));
+            }
             return mockIncidents;
         }
+    },
+
+    // Scoped helper for specific department
+    getDepartmentIncidents: async (department) => {
+        return incidentService.getIncidents({ department });
     },
 
     // Create incident
