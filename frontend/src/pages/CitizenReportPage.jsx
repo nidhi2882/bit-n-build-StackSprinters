@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
     AlertCircle, 
     Send, 
@@ -27,8 +27,171 @@ const TAXONOMY_CATEGORIES = [
     { type: "Rescue", label: "🔍 Search & Rescue", color: "#ec4899", subTypeId: "SUB_SR_MISS" }
 ];
 
+// Component to render live progress tracking card for a reported incident
+function CitizenIncidentProgressTracker({ inc }) {
+    const { resources } = useEmergency();
+    const [serviceRequests, setServiceRequests] = useState([]);
+    const [activities, setActivities] = useState([]);
+    const [expanded, setExpanded] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const fetchDetails = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+            const [reqRes, actRes] = await Promise.allSettled([
+                fetch(`http://localhost:8080/api/incidents/${inc.id}/service-requests`, { headers }),
+                fetch(`http://localhost:8080/api/incidents/${inc.id}/activities`, { headers })
+            ]);
+
+            if (reqRes.status === "fulfilled" && reqRes.value.ok) {
+                const data = await reqRes.value.json();
+                setServiceRequests(data);
+            }
+            if (actRes.status === "fulfilled" && actRes.value.ok) {
+                const data = await actRes.value.json();
+                setActivities(data);
+            }
+        } catch (err) {
+            console.error("Error loading incident tracking details:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDetails();
+        const interval = setInterval(fetchDetails, 10000); // 10s live polling
+        return () => clearInterval(interval);
+    }, [inc.id]);
+
+    const assignedUnits = resources.filter(r => (inc.assignedResourceIds || []).includes(r.id) || r.assignedIncidentId === inc.id);
+
+    return (
+        <div style={{ background: '#0b1120', border: '1px solid #1e293b', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Header Title & Status */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                    <div style={{ fontSize: '0.75rem', color: '#60a5fa', fontWeight: 800 }}>INCIDENT #{inc.id}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{inc.title}</div>
+                </div>
+                <span className={`status-pill ${inc.status}`} style={{ fontSize: '0.8rem', padding: '4px 10px', fontWeight: 800 }}>
+                    {inc.status}
+                </span>
+            </div>
+
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <MapPin size={14} color="#ef4444" />
+                <span>{inc.locationName}</span>
+            </div>
+
+            {/* Step-by-Step Response Pipeline Tracker */}
+            <div style={{ background: '#070b14', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, marginBottom: '8px' }}>
+                    RESPONSE & DISPATCH PROGRESS:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '0.75rem' }}>
+                    <div style={{ background: '#0f172a', padding: '8px', borderRadius: '6px', borderLeft: '3px solid #10b981' }}>
+                        <div style={{ color: '#10b981', fontWeight: 800 }}>✓ Reported</div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Submitted & Received</div>
+                    </div>
+
+                    <div style={{ background: '#0f172a', padding: '8px', borderRadius: '6px', borderLeft: inc.status !== "Reported" ? '3px solid #10b981' : '3px solid #64748b' }}>
+                        <div style={{ color: inc.status !== "Reported" ? '#10b981' : '#64748b', fontWeight: 800 }}>
+                            {inc.status !== "Reported" ? "✓ Categorized" : "⏳ AI Categorizing"}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{inc.type} Dept Scope</div>
+                    </div>
+
+                    <div style={{ background: '#0f172a', padding: '8px', borderRadius: '6px', borderLeft: assignedUnits.length > 0 ? '3px solid #3b82f6' : '3px solid #64748b' }}>
+                        <div style={{ color: assignedUnits.length > 0 ? '#3b82f6' : '#64748b', fontWeight: 800 }}>
+                            {assignedUnits.length > 0 ? `✓ ${assignedUnits.length} Unit Assigned` : "⏳ Awaiting Unit"}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                            {assignedUnits.length > 0 ? assignedUnits[0].name : "Primary Command"}
+                        </div>
+                    </div>
+
+                    <div style={{ background: '#0f172a', padding: '8px', borderRadius: '6px', borderLeft: inc.status === "Resolved" ? '3px solid #10b981' : (inc.status === "En-Route" || inc.status === "On-Scene") ? '3px solid #f59e0b' : '3px solid #64748b' }}>
+                        <div style={{ color: inc.status === "Resolved" ? '#10b981' : (inc.status === "En-Route" || inc.status === "On-Scene") ? '#f59e0b' : '#64748b', fontWeight: 800 }}>
+                            {inc.status === "Resolved" ? "✅ Resolved" : inc.status === "On-Scene" ? "🚨 On-Scene" : inc.status === "En-Route" ? "🔵 En-Route" : "Dispatch Ready"}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Emergency Action</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Cross-Department Additional Services Section */}
+            {serviceRequests.length > 0 && (
+                <div style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.3)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.78rem', color: '#c084fc', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Zap size={14} color="#a855f7" />
+                        <span>Cross-Department Support Services Requested ({serviceRequests.length})</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {serviceRequests.map(sr => (
+                            <div key={sr.id} style={{ background: '#070b14', padding: '8px 10px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                                <div>
+                                    <span style={{ color: '#fff', fontWeight: 700 }}>{sr.requestedDepartment} Dept</span>
+                                    <span style={{ color: '#94a3b8', marginLeft: '6px' }}>({sr.requiredCapability})</span>
+                                    {sr.assignedUnitName && (
+                                        <div style={{ color: '#10b981', fontSize: '0.72rem', fontWeight: 700, marginTop: '2px' }}>
+                                            Assigned Unit: {sr.assignedUnitName}
+                                        </div>
+                                    )}
+                                </div>
+                                <span style={{
+                                    fontSize: '0.72rem',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontWeight: 800,
+                                    background: sr.status === "ACCEPTED" ? 'rgba(16,185,129,0.2)' : sr.status === "DECLINED" ? 'rgba(239,68,68,0.2)' : sr.status === "RESOLVED" ? 'rgba(100,116,139,0.2)' : 'rgba(168,85,247,0.2)',
+                                    color: sr.status === "ACCEPTED" ? '#10b981' : sr.status === "DECLINED" ? '#ef4444' : sr.status === "RESOLVED" ? '#94a3b8' : '#c084fc'
+                                }}>
+                                    {sr.status === "ACCEPTED" ? "ACCEPTED & DEPLOYED" : sr.status}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Toggle Detailed Activity Timeline */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    style={{ background: 'transparent', border: 'none', color: '#60a5fa', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                    <span>{expanded ? "Hide Response Timeline Log" : `View Full Live Activity Log (${activities.length})`}</span>
+                </button>
+            </div>
+
+            {/* Detailed Activity Log List */}
+            {expanded && (
+                <div style={{ background: '#070b14', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid #1e293b' }}>
+                    {activities.length > 0 ? (
+                        activities.map(act => (
+                            <div key={act.id} style={{ fontSize: '0.75rem', color: '#cbd5e1', display: 'flex', gap: '8px' }}>
+                                <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>
+                                    {new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                <span>•</span>
+                                <span>{act.activityText}</span>
+                            </div>
+                        ))
+                    ) : (
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Incident reported. Awaiting further updates...</div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function CitizenReportPage() {
-    const { addNewIncident, setSelectedIncident } = useEmergency();
+    const { addNewIncident, setSelectedIncident, incidents } = useEmergency();
     const navigate = useNavigate();
 
     const [form, setForm] = useState({
@@ -78,7 +241,6 @@ function CitizenReportPage() {
                 setSubmittedIncident(created);
                 setSosActive(true);
             } catch (err) {
-                // Local state fallback
                 const fallback = addNewIncident({
                     title: "🚨 ONE-TAP PANIC SOS: Urgent Rescue Needed",
                     type: "Rescue",
@@ -99,350 +261,212 @@ function CitizenReportPage() {
                     sendSos(pos.coords.latitude, pos.coords.longitude, "Live GPS Location");
                 },
                 () => {
-                    // Fallback to Vadodara demo coordinates if GPS permission denied
                     sendSos(22.3120, 73.1750, "Subhanpura Sector 4, Vadodara");
-                },
-                { timeout: 4000 }
+                }
             );
         } else {
             sendSos(22.3120, 73.1750, "Subhanpura Sector 4, Vadodara");
         }
     };
 
-    const handleFormSubmit = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            const res = await apiClient.post("/ingest/citizen", form);
-            if (res.data && res.data.incident) {
-                setSubmittedIncident(res.data.incident);
-            } else {
-                const created = addNewIncident(form);
-                setSubmittedIncident(created);
-            }
-        } catch (error) {
-            const created = addNewIncident(form);
+            const created = await addNewIncident({
+                title: form.title || `${form.type} Emergency at ${form.locationName}`,
+                type: form.type,
+                description: form.description || "Emergency report submitted via Citizen Public Portal.",
+                severity: form.severity,
+                locationName: form.locationName,
+                lat: form.lat,
+                lng: form.lng
+            });
+
             setSubmittedIncident(created);
+        } catch (err) {
+            console.error("Submit emergency report error:", err);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '22px' }}>
-            
-            {/* Top SOS Panic Banner */}
-            <div style={{
-                background: "linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.3) 100%)",
-                border: "2px solid #ef4444",
-                borderRadius: "14px",
-                padding: "20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "16px",
-                flexWrap: "wrap",
-                boxShadow: "0 0 25px rgba(239, 68, 68, 0.25)"
-            }}>
-                <div style={{ flex: 1, minWidth: "260px" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#ef4444", color: "#fff", padding: "3px 8px", borderRadius: "4px", fontSize: "0.72rem", fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "6px" }}>
-                        <Zap size={12} />
-                        <span>Phase 3 One-Tap Gateway</span>
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Citizen Header */}
+            <div className="card" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)', borderColor: '#a855f7', padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{ background: 'linear-gradient(135deg, #ef4444 0%, #a855f7 100%)', color: '#fff', padding: '12px', borderRadius: '12px' }}>
+                            <LifeBuoy size={24} />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: 800, textTransform: 'uppercase' }}>
+                                CITIZEN EMERGENCY PORTAL & LIVE TRACKER
+                            </div>
+                            <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+                                Report Emergency & Track Live Dispatch Progress
+                            </h1>
+                            <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                                Instant 1-Tap SOS Panic Beacon • Multi-Department Live Response Tracking
+                            </div>
+                        </div>
                     </div>
-                    <h2 style={{ fontSize: "1.3rem", fontWeight: 900, color: "#fff", margin: 0 }}>
-                        Immediate Life Danger? Use One-Tap SOS
-                    </h2>
-                    <p style={{ color: "#fecaca", fontSize: "0.84rem", margin: "4px 0 0", lineHeight: 1.4 }}>
-                        Bypasses all forms. Instantly transmits your exact GPS location at guaranteed <strong>Level-5 Critical Severity</strong> to Vadodara Central Command.
-                    </p>
+                </div>
+            </div>
+
+            {/* One-Tap SOS Panic Banner */}
+            <div className="card" style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)', borderColor: '#ef4444', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                <div>
+                    <div style={{ fontSize: '0.8rem', color: '#fca5a5', fontWeight: 800, textTransform: 'uppercase' }}>
+                        🚨 IMMEDIATE LIFE THREAT PANIC BUTTON
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>
+                        Press One-Tap SOS to Broadcast Live GPS Rescue Signal
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#fecaca', marginTop: '2px' }}>
+                        Transmits exact coordinates to closest Fire, Flood, and EMS commanders.
+                    </div>
                 </div>
 
                 <button
-                    type="button"
                     onClick={handleOneTapSos}
                     disabled={sosTriggering}
                     style={{
-                        background: "radial-gradient(circle, #ef4444 0%, #b91c1c 100%)",
-                        border: "3px solid #fecaca",
-                        color: "#fff",
-                        padding: "16px 28px",
-                        borderRadius: "50px",
+                        background: '#ef4444',
+                        color: '#fff',
+                        border: '2px solid #fff',
+                        padding: '14px 24px',
+                        borderRadius: '12px',
                         fontWeight: 900,
-                        fontSize: "1.15rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        boxShadow: "0 0 20px rgba(239, 68, 68, 0.6)",
-                        transform: sosTriggering ? "scale(0.95)" : "scale(1)",
-                        transition: "all 0.2s"
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 20px rgba(239, 68, 68, 0.6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
                     }}
                 >
-                    <AlertOctagon size={24} className="pulse-dot" />
-                    <span>{sosTriggering ? "Transmitting GPS SOS..." : "ONE-TAP SOS PANIC"}</span>
+                    <Zap size={20} />
+                    <span>{sosTriggering ? "Broadcasting SOS..." : "TRANSMIT SOS NOW"}</span>
                 </button>
             </div>
 
-            <div style={{ textAlign: 'center' }}>
-                <span className="brand-badge" style={{ marginBottom: '8px', display: 'inline-block' }}>Multi-Source Ingestion Portal</span>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: '4px 0 8px' }}>
-                    Report an Emergency Incident
-                </h1>
-                <p style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-                    Analyzed by ResQGrid AI for two-level taxonomy classification, hybrid severity scoring, and 3-signal duplicate detection.
-                </p>
-            </div>
-
-            {submittedIncident ? (
-                <div className="card" style={{ padding: '30px', textAlign: 'center', borderColor: '#10b981', background: 'rgba(16, 185, 129, 0.05)' }}>
-                    <div style={{ background: 'rgba(16, 185, 129, 0.2)', width: '60px', height: '60px', borderRadius: '50%', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                        <CheckCircle2 size={32} />
-                    </div>
-                    <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
-                        Emergency Report Transmitted!
-                    </h2>
-                    <div style={{ fontSize: '0.92rem', color: '#93c5fd', fontFamily: 'monospace', fontWeight: 700 }}>
-                        Incident ID: {submittedIncident.id} • Severity Level {submittedIncident.severity}/5 (Priority {submittedIncident.severity >= 5 ? "P1" : "P2"})
-                    </div>
-
-                    <div style={{ margin: '20px 0', background: '#0f172a', padding: '16px', borderRadius: '10px', textAlign: 'left', border: '1px solid #1e293b' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c084fc', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
-                            <Sparkles size={16} />
-                            <span>AI Microservice Triage Analysis:</span>
-                        </div>
-                        <p style={{ fontSize: '0.85rem', color: '#e2e8f0', lineHeight: 1.5, margin: 0 }}>
-                            {submittedIncident.aiSummary || "Triage initiated. Nearest capable units evaluated via road-network routing."}
-                        </p>
-                        <div style={{ marginTop: '12px', fontSize: '0.8rem', color: '#a7f3d0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <ShieldCheck size={16} />
-                            <span>Automated SLA timer active. Operators and field dispatch notified.</span>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: "wrap" }}>
-                        <button
-                            onClick={() => {
-                                setSubmittedIncident(null);
-                                setSosActive(false);
-                            }}
-                            style={{ background: '#1e293b', color: '#fff', border: '1px solid #334155', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
-                        >
-                            Report Another Emergency
-                        </button>
-                        <button
-                            onClick={() => {
-                                setSelectedIncident(submittedIncident);
-                                navigate("/");
-                            }}
-                            style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
-                        >
-                            View on Live Command Center Map
-                        </button>
-                    </div>
+            {/* Emergency Report Submission Form */}
+            <div className="card" style={{ padding: '20px' }}>
+                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Send size={18} color="#3b82f6" />
+                    <span>Submit Detailed Incident Report</span>
                 </div>
-            ) : (
-                <form className="card" onSubmit={handleFormSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div>
-                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc', display: 'block', marginBottom: '8px' }}>
-                            Select Emergency Taxonomy Category
-                        </label>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
-                            {TAXONOMY_CATEGORIES.map((item) => (
+                        <label style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 700 }}>Select Emergency Category</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginTop: '6px' }}>
+                            {TAXONOMY_CATEGORIES.map(cat => (
                                 <button
+                                    key={cat.type}
                                     type="button"
-                                    key={item.type}
-                                    onClick={() => setForm({ ...form, type: item.type, subTypeId: item.subTypeId })}
+                                    onClick={() => setForm({ ...form, type: cat.type, subTypeId: cat.subTypeId })}
                                     style={{
-                                        background: form.type === item.type ? item.color : '#0f172a',
-                                        color: '#fff',
-                                        border: `1px solid ${form.type === item.type ? item.color : '#1e293b'}`,
-                                        padding: '12px 10px',
+                                        padding: '10px',
                                         borderRadius: '8px',
+                                        border: form.type === cat.type ? `2px solid ${cat.color}` : '1px solid #1e293b',
+                                        background: form.type === cat.type ? '#1e293b' : '#0b1120',
+                                        color: '#fff',
                                         fontWeight: 700,
-                                        fontSize: '0.82rem',
+                                        fontSize: '0.85rem',
                                         cursor: 'pointer',
-                                        textAlign: 'center',
-                                        transition: "all 0.15s"
+                                        textAlign: 'left'
                                     }}
                                 >
-                                    {item.label}
+                                    {cat.label}
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     <div>
-                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc', display: 'block', marginBottom: '6px' }}>
-                            Emergency Headline *
-                        </label>
+                        <label style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 700 }}>Incident Title / Summary</label>
                         <input
                             type="text"
-                            placeholder="e.g. Water rapidly rising, 14 families trapped on rooftop"
+                            required
+                            placeholder="e.g. Flash Flood water entering homes in Subhanpura..."
                             value={form.title}
-                            onChange={(e) => setForm({ ...form, title: e.target.value })}
-                            required
-                            style={{
-                                width: '100%',
-                                background: '#0b1120',
-                                border: '1px solid #1e293b',
-                                color: '#fff',
-                                padding: '10px 14px',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                outline: 'none'
-                            }}
+                            onChange={e => setForm({ ...form, title: e.target.value })}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#0b1120', border: '1px solid #1e293b', color: '#fff', marginTop: '4px', outline: 'none' }}
                         />
                     </div>
 
                     <div>
-                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc', display: 'block', marginBottom: '6px' }}>
-                            Location Address / Landmarks *
-                        </label>
-                        <div style={{ position: 'relative' }}>
-                            <MapPin size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#ef4444' }} />
-                            <input
-                                type="text"
-                                placeholder="Enter street, landmark, sector, or village name..."
-                                value={form.locationName}
-                                onChange={(e) => setForm({ ...form, locationName: e.target.value })}
-                                required
-                                style={{
-                                    width: '100%',
-                                    background: '#0b1120',
-                                    border: '1px solid #1e293b',
-                                    color: '#fff',
-                                    padding: '10px 14px 10px 36px',
-                                    borderRadius: '8px',
-                                    fontSize: '0.9rem',
-                                    outline: 'none'
-                                }}
-                            />
-                        </div>
+                        <label style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 700 }}>Exact Location Address</label>
+                        <input
+                            type="text"
+                            required
+                            value={form.locationName}
+                            onChange={e => setForm({ ...form, locationName: e.target.value })}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#0b1120', border: '1px solid #1e293b', color: '#fff', marginTop: '4px', outline: 'none' }}
+                        />
                     </div>
 
                     <div>
-                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc', display: 'block', marginBottom: '6px' }}>
-                            Description, Trapped Counts & Hazards
-                        </label>
+                        <label style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 700 }}>Detailed Situation Notes</label>
                         <textarea
-                            rows={4}
-                            placeholder="Describe trapped people count, injuries, water level, flame intensity, or chemical odors..."
+                            rows={3}
+                            placeholder="Describe severity, trapped persons, injuries, water level, or smoke..."
                             value={form.description}
-                            onChange={(e) => setForm({ ...form, description: e.target.value })}
-                            required
-                            style={{
-                                width: '100%',
-                                background: '#0b1120',
-                                border: '1px solid #1e293b',
-                                color: '#fff',
-                                padding: '10px 14px',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                fontFamily: 'inherit',
-                                outline: 'none'
-                            }}
+                            onChange={e => setForm({ ...form, description: e.target.value })}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#0b1120', border: '1px solid #1e293b', color: '#fff', marginTop: '4px', outline: 'none' }}
                         />
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                        <div>
-                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                                Your Name (Optional)
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="Citizen Name"
-                                value={form.reporterName}
-                                onChange={(e) => setForm({ ...form, reporterName: e.target.value })}
-                                style={{ width: '100%', background: '#0b1120', border: '1px solid #1e293b', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                                Callback Phone (Improves Trust Score)
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="+91 98XXX XXXXX"
-                                value={form.reporterPhone}
-                                onChange={(e) => setForm({ ...form, reporterPhone: e.target.value })}
-                                style={{ width: '100%', background: '#0b1120', border: '1px solid #1e293b', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(168,85,247,0.1) 100%)', border: '1px solid rgba(59,130,246,0.3)', padding: '12px 16px', borderRadius: '8px', fontSize: '0.82rem', color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Sparkles size={20} style={{ color: '#a855f7', flexShrink: 0 }} />
-                        <span>AI Microservice Active: Real-time NLP entity extraction and 3-signal spatial/temporal duplicate detection will consolidate matching calls into a single ticket.</span>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="btn-report-emergency"
-                        style={{ padding: '14px', fontSize: '1rem', justifyContent: 'center', marginTop: '6px' }}
+                        style={{
+                            padding: '14px',
+                            borderRadius: '8px',
+                            background: '#3b82f6',
+                            color: '#fff',
+                            border: 'none',
+                            fontWeight: 800,
+                            fontSize: '0.95rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px'
+                        }}
                     >
                         <Send size={18} />
-                        <span>{loading ? "Transmitting Emergency Report..." : "Submit Emergency Report Now"}</span>
+                        <span>{loading ? "Transmitting Report to Command Center..." : "Submit Emergency Report"}</span>
                     </button>
                 </form>
-            )}
+            </div>
 
-            {/* My Reported Emergencies & Live Status Tracking Panel */}
+            {/* My Reported Emergencies & Live Multi-Department Status Tracker */}
             <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Radio size={18} style={{ color: '#10b981' }} />
-                        <span>My Reported Emergencies & Live Status Tracking</span>
+                        <Radio size={20} style={{ color: '#10b981' }} />
+                        <span>My Reported Emergencies & Multi-Department Response Progress</span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#a7f3d0', background: 'rgba(16,185,129,0.15)', padding: '2px 8px', borderRadius: '6px' }}>
-                        Real-Time Tracking Active
+                    <span style={{ fontSize: '0.75rem', color: '#a7f3d0', background: 'rgba(16,185,129,0.15)', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                        Live Tracking Active
                     </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {useEmergency().incidents.length > 0 ? (
-                        useEmergency().incidents.slice(0, 3).map((inc) => (
-                            <div key={inc.id} style={{ background: '#0b1120', border: '1px solid #1e293b', padding: '14px', borderRadius: '10px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff' }}>{inc.title}</span>
-                                    <span className={`status-pill ${inc.status}`}>{inc.status}</span>
-                                </div>
-                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                                    <MapPin size={14} color="#ef4444" />
-                                    <span>{inc.locationName}</span>
-                                </div>
-
-                                {/* Status Progress Timeline */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', fontSize: '0.72rem', color: '#64748b' }}>
-                                    <span style={{ color: '#10b981', fontWeight: 700 }}>✓ Reported</span> → 
-                                    <span style={{ color: inc.status !== "Reported" ? '#10b981' : '#64748b', fontWeight: 700 }}>✓ AI Classified</span> → 
-                                    <span style={{ color: (inc.status === "En-Route" || inc.status === "On-Scene" || inc.status === "Resolved") ? '#3b82f6' : '#64748b', fontWeight: 700 }}>
-                                        {inc.status === "En-Route" ? "🔵 En-Route" : "Unit Assigned"}
-                                    </span> → 
-                                    <span style={{ color: inc.status === "Resolved" ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                                        {inc.status === "Resolved" ? "✅ Mission Resolved" : "On-Scene / Resolved"}
-                                    </span>
-                                </div>
-                            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {incidents.length > 0 ? (
+                        incidents.slice(0, 5).map(inc => (
+                            <CitizenIncidentProgressTracker key={inc.id} inc={inc} />
                         ))
                     ) : (
                         <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '0.85rem' }}>
                             No active emergency reports submitted yet.
                         </div>
                     )}
-                </div>
-            </div>
-
-            {/* Active Public Safety Broadcast Advisories */}
-            <div className="card" style={{ padding: '20px', background: '#0b1120', border: '1px solid #1e293b' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#fff', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <AlertCircle size={16} style={{ color: '#eab308' }} />
-                    <span>Public Safety Area Warnings & Broadcast Advisories</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.5 }}>
-                    📢 <strong>Vadodara District Warning:</strong> Heavy flash flood warning active near Vishwamitri River. Citizens in low-lying Akota and Subhanpura areas are advised to stay indoors or move to safer shelter nodes.
                 </div>
             </div>
         </div>

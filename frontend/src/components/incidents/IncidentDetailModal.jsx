@@ -247,7 +247,7 @@ const IncidentDetailModal = () => {
                                         onChange={e => setServiceForm({ ...serviceForm, urgency: e.target.value })}
                                         style={{ width: '100%', padding: '8px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff', marginTop: '4px' }}
                                     >
-                                        <option value="CRITICAL">🚨 CRITICAL (Auto-Escalates > 5m)</option>
+                                         <option value="CRITICAL">🚨 CRITICAL (Auto-Escalates &gt; 5m)</option>
                                         <option value="HIGH">⚡ HIGH Urgency</option>
                                         <option value="NORMAL">🔵 NORMAL Support</option>
                                     </select>

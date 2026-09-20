@@ -4,13 +4,22 @@ import { useEmergency } from "../../context/EmergencyContext";
 import { useAuth } from "../../context/AuthContext";
 
 function DepartmentAdminDashboard() {
-    const { incidents, resources, updateIncidentStatus, assignResource } = useEmergency();
+    const { incidents, resources, alerts, dismissAlert, updateIncidentStatus, assignResource } = useEmergency();
     const { user } = useAuth();
 
     const userDeptCat = user?.departmentCategory || "CAT_FIRE";
     const [selectedDeptCategory, setSelectedDeptCategory] = useState(userDeptCat);
     const [reclassifyIncidentId, setReclassifyIncidentId] = useState(null);
     const [targetCategory, setTargetCategory] = useState("CAT_FLOOD");
+
+    // Scoped alerts targeting current selected department
+    const deptAlerts = alerts.filter(a => {
+        if (!a.targetDepartment) return true;
+        const targetUpper = a.targetDepartment.toUpperCase();
+        const currentUpper = selectedDeptCategory.toUpperCase();
+        const shortCategory = currentUpper.replace("CAT_", "");
+        return targetUpper.includes(shortCategory) || targetUpper === currentUpper;
+    });
 
     // Cross-Department Requests State
     const [incomingRequests, setIncomingRequests] = useState([]);
@@ -234,6 +243,58 @@ function DepartmentAdminDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Targeted Department Alerts Notification Panel */}
+            {deptAlerts.length > 0 && (
+                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(15, 23, 42, 0.9) 100%)', borderColor: '#eab308', padding: '16px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fef08a', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ShieldAlert size={18} color="#eab308" />
+                            <span>Department Action Notifications & Live Alerts ({deptAlerts.length})</span>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {deptAlerts.slice(0, 3).map(alt => (
+                            <div key={alt.id} style={{ background: '#0b1120', border: '1px solid #1e293b', padding: '10px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        background: alt.type === 'SERVICE_REQUEST' ? 'rgba(168,85,247,0.2)' : 'rgba(239,68,68,0.2)',
+                                        color: alt.type === 'SERVICE_REQUEST' ? '#c084fc' : '#fca5a5'
+                                    }}>
+                                        {alt.type || "ALERT"}
+                                    </span>
+                                    <div>
+                                        <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.85rem' }}>{alt.title}</div>
+                                        <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>{alt.message}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {alt.type === 'SERVICE_REQUEST' && (
+                                        <button
+                                            onClick={() => setActiveSection("requests")}
+                                            style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' }}
+                                        >
+                                            View Inbox
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => dismissAlert(alt.id)}
+                                        style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Department Summary Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
