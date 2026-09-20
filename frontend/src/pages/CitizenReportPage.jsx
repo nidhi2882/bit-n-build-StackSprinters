@@ -38,20 +38,16 @@ function CitizenIncidentProgressTracker({ inc }) {
     const fetchDetails = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem("token");
-            const headers = token ? { "Authorization": `Bearer ${token}` } : {};
             const [reqRes, actRes] = await Promise.allSettled([
-                fetch(`http://localhost:8080/api/incidents/${inc.id}/service-requests`, { headers }),
-                fetch(`http://localhost:8080/api/incidents/${inc.id}/activities`, { headers })
+                apiClient.get(`/incidents/${inc.id}/service-requests`),
+                apiClient.get(`/incidents/${inc.id}/activities`)
             ]);
 
-            if (reqRes.status === "fulfilled" && reqRes.value.ok) {
-                const data = await reqRes.value.json();
-                setServiceRequests(data);
+            if (reqRes.status === "fulfilled" && reqRes.value?.data) {
+                setServiceRequests(reqRes.value.data);
             }
-            if (actRes.status === "fulfilled" && actRes.value.ok) {
-                const data = await actRes.value.json();
-                setActivities(data);
+            if (actRes.status === "fulfilled" && actRes.value?.data) {
+                setActivities(actRes.value.data);
             }
         } catch (err) {
             console.error("Error loading incident tracking details:", err);

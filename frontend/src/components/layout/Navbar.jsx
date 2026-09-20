@@ -28,14 +28,19 @@ const Navbar = () => {
     const userRole = user?.role || "";
 
     const userAlerts = alerts.filter(alt => {
-        if (!userDept || userRole === "Super Admin" || userRole === "Emergency Operator") {
+        if (!userDept || userRole.includes("Super Admin") || userRole.includes("SUPER_ADMIN") || userRole.includes("Emergency Operator")) {
             return true;
         }
         if (alt.targetDepartment) {
             const targetUpper = alt.targetDepartment.toUpperCase();
             const deptUpper = userDept.toUpperCase();
-            const deptShort = deptUpper.replace("CAT_", "");
-            return targetUpper.includes(deptShort) || targetUpper === deptUpper;
+            const targetClean = targetUpper.replace("CAT_", "");
+            const deptClean = deptUpper.replace("CAT_", "");
+            return targetUpper === deptUpper || 
+                   targetClean.includes(deptClean) || 
+                   deptClean.includes(targetClean) ||
+                   (deptClean.startsWith("MED") && targetClean.startsWith("MED")) ||
+                   (deptClean.startsWith("SEC") && (targetClean.startsWith("POL") || targetClean.startsWith("SEC")));
         }
         return true;
     });

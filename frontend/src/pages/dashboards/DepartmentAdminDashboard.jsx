@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Flame, Waves, Stethoscope, ShieldAlert, ArrowRightLeft, AlertTriangle, Users, CheckCircle2, Clock, Filter, MapPin, Share2, Check, X, ShieldCheck, RefreshCw } from "lucide-react";
 import { useEmergency } from "../../context/EmergencyContext";
 import { useAuth } from "../../context/AuthContext";
+import { apiClient } from "../../services/api";
 
 function DepartmentAdminDashboard() {
     const { incidents, resources, alerts, dismissAlert, updateIncidentStatus, assignResource } = useEmergency();
@@ -17,8 +18,13 @@ function DepartmentAdminDashboard() {
         if (!a.targetDepartment) return true;
         const targetUpper = a.targetDepartment.toUpperCase();
         const currentUpper = selectedDeptCategory.toUpperCase();
-        const shortCategory = currentUpper.replace("CAT_", "");
-        return targetUpper.includes(shortCategory) || targetUpper === currentUpper;
+        const targetClean = targetUpper.replace("CAT_", "");
+        const currentClean = currentUpper.replace("CAT_", "");
+        return targetUpper === currentUpper || 
+               targetClean.includes(currentClean) || 
+               currentClean.includes(targetClean) ||
+               (currentClean.startsWith("MED") && targetClean.startsWith("MED")) ||
+               (currentClean.startsWith("SEC") && (targetClean.startsWith("POL") || targetClean.startsWith("SEC")));
     });
 
     // Cross-Department Requests State
@@ -44,15 +50,9 @@ function DepartmentAdminDashboard() {
     const fetchIncomingRequests = async () => {
         setLoadingRequests(true);
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:8080/api/service-requests/incoming", {
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setIncomingRequests(data);
+            const res = await apiClient.get("/service-requests/incoming");
+            if (res.data) {
+                setIncomingRequests(res.data);
             }
         } catch (err) {
             console.error("Failed to fetch incoming service requests:", err);

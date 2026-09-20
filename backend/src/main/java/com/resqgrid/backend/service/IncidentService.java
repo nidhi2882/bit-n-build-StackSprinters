@@ -20,6 +20,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.resqgrid.backend.entity.IncidentActivity;
+import com.resqgrid.backend.repository.IncidentActivityRepository;
+
 @Service
 public class IncidentService {
 
@@ -35,6 +38,7 @@ public class IncidentService {
     private final OsrmService osrmService;
 
     private final ServiceRequestRepository serviceRequestRepository;
+    private final IncidentActivityRepository incidentActivityRepository;
 
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentReportRepository incidentReportRepository,
@@ -42,7 +46,7 @@ public class IncidentService {
                            ResourceAssignmentRepository resourceAssignmentRepository,
                            AlertRepository alertRepository,
                            MongoSyncService mongoSyncService) {
-        this(incidentRepository, incidentReportRepository, resourceRepository, resourceAssignmentRepository, alertRepository, mongoSyncService, null, null, null);
+        this(incidentRepository, incidentReportRepository, resourceRepository, resourceAssignmentRepository, alertRepository, mongoSyncService, null, null, null, null);
     }
 
     @Autowired
@@ -54,7 +58,8 @@ public class IncidentService {
                            MongoSyncService mongoSyncService,
                            @Autowired(required = false) AiClientService aiClientService,
                            @Autowired(required = false) OsrmService osrmService,
-                           @Autowired(required = false) ServiceRequestRepository serviceRequestRepository) {
+                           @Autowired(required = false) ServiceRequestRepository serviceRequestRepository,
+                           @Autowired(required = false) IncidentActivityRepository incidentActivityRepository) {
         this.incidentRepository = incidentRepository;
         this.incidentReportRepository = incidentReportRepository;
         this.resourceRepository = resourceRepository;
@@ -64,6 +69,7 @@ public class IncidentService {
         this.aiClientService = aiClientService;
         this.osrmService = osrmService;
         this.serviceRequestRepository = serviceRequestRepository;
+        this.incidentActivityRepository = incidentActivityRepository;
     }
 
     public List<Incident> getAllIncidents() {
@@ -291,22 +297,36 @@ public class IncidentService {
         Incident saved = incidentRepository.save(incident);
         mongoSyncService.syncIncident(saved);
 
-        // Auto-escalation trigger: If severity >= 4, trigger immediate Critical Alert
-        if (saved.getSeverity() != null && saved.getSeverity() >= 4) {
-            Alert criticalAlert = Alert.builder()
-                    .id("ALT-" + System.currentTimeMillis())
-                    .type("CRITICAL")
-                    .title("CRITICAL SEVERITY: " + saved.getTitle())
-                    .message(String.format("%s (%s) at %s. Level %d/5 emergency requires immediate unit triage.",
-                            saved.getId(), saved.getType(), saved.getLocationName(), saved.getSeverity()))
+        // Targeted alert for all reported incidents
+        String targetDept = mapCategory(saved.getType());
+        boolean isCritical = saved.getSeverity() != null && saved.getSeverity() >= 4;
+
+        Alert newIncidentAlert = Alert.builder()
+                .id("ALT-" + System.currentTimeMillis())
+                .type(isCritical ? "CRITICAL" : "NEW_INCIDENT")
+                .title((isCritical ? "CRITICAL EMERGENCY REPORTED: " : "NEW INCIDENT REPORTED: ") + saved.getTitle())
+                .message(String.format("%s (%s) at %s. Level %d/5 emergency.",
+                        saved.getId(), saved.getType(), saved.getLocationName(), saved.getSeverity() != null ? saved.getSeverity() : 1))
+                .incidentId(saved.getId())
+                .targetDepartment(targetDept)
+                .actionRequired(isCritical ? "Immediate Dispatch Required" : "Review & Assign Response Unit")
+                .active(true)
+                .time("Just now")
+                .createdAt(LocalDateTime.now())
+                .build();
+        alertRepository.save(newIncidentAlert);
+        mongoSyncService.syncAlert(newIncidentAlert);
+
+        // Initial Activity Timeline Log for Citizen Progress Tracking
+        if (incidentActivityRepository != null) {
+            IncidentActivity activity = IncidentActivity.builder()
                     .incidentId(saved.getId())
-                    .actionRequired("Immediate Dispatch Required")
-                    .active(true)
-                    .time("Just now")
+                    .activityText(String.format("Emergency incident %s (%s) reported at %s with Level %d priority.",
+                            saved.getId(), saved.getType(), saved.getLocationName(), saved.getSeverity() != null ? saved.getSeverity() : 1))
+                    .actor(saved.getReporterName() != null && !saved.getReporterName().isEmpty() ? saved.getReporterName() : "Citizen")
                     .createdAt(LocalDateTime.now())
                     .build();
-            alertRepository.save(criticalAlert);
-            mongoSyncService.syncAlert(criticalAlert);
+            incidentActivityRepository.save(activity);
         }
 
         return saved;
@@ -356,6 +376,18 @@ public class IncidentService {
         incident.setStatus(status);
         Incident saved = incidentRepository.save(incident);
         mongoSyncService.syncIncident(saved);
+
+        // Activity log for status update
+        if (incidentActivityRepository != null) {
+            IncidentActivity activity = IncidentActivity.builder()
+                    .incidentId(saved.getId())
+                    .activityText(String.format("Incident status updated to %s", status))
+                    .actor("DEPARTMENT_ADMIN")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            incidentActivityRepository.save(activity);
+        }
+
         return saved;
     }
 
@@ -393,6 +425,18 @@ public class IncidentService {
                 .build();
         resourceAssignmentRepository.save(assignment);
         mongoSyncService.syncResourceAssignment(assignment);
+
+        // 4. Log Activity for Citizen Tracking
+        if (incidentActivityRepository != null) {
+            String unitName = resource.getCallSign() != null ? resource.getCallSign() : resource.getName();
+            IncidentActivity activity = IncidentActivity.builder()
+                    .incidentId(incidentId)
+                    .activityText(String.format("Response Unit %s (%s) dispatched to scene.", unitName, resource.getType() != null ? resource.getType() : "Emergency Unit"))
+                    .actor("DISPATCHER")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            incidentActivityRepository.save(activity);
+        }
 
         return incident;
     }
