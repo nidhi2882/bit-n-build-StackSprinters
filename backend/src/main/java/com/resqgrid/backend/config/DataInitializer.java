@@ -91,6 +91,7 @@ public class DataInitializer implements CommandLineRunner {
         seedIncidents();
         seedResources();
         seedServiceRequests();
+        seedHistoricalIncidents();
 
         log.info("ResQGrid initialized with full 9-department data and credentials ready.");
     }
@@ -345,6 +346,91 @@ public class DataInitializer implements CommandLineRunner {
                 incidentRepository.save(inc);
             }
         }
+    }
+
+    /**
+     * Seeds a spread of historical/varied incidents (mostly resolved, across all 9 categories,
+     * with realistic reportedAt/dispatchedAt/resolvedAt timestamps) so analytics charts —
+     * category volume, severity distribution, status mix, response-time percentiles, SLA
+     * compliance and the hourly trend — render with meaningful, dynamic data.
+     */
+    private void seedHistoricalIncidents() {
+        if (incidentRepository.count() >= 30) {
+            return;
+        }
+        log.info("Seeding historical incident dataset to enrich analytics charts...");
+
+        String[] cats = {"FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE"};
+        String[] locations = {"Alkapuri", "Sayajigunj", "Manjalpur", "Gotri Road", "Waghodia", "Karelibaug", "Fatehgunj", "Akota", "Sama", "Nizampura"};
+        java.util.Random rnd = new java.util.Random(42);
+        LocalDateTime now = LocalDateTime.now();
+
+        int startIdx = 20; // avoid clashing with INC-2026-001..009 and SOS ids
+        java.util.List<Incident> batch = new java.util.ArrayList<>();
+        for (int i = 0; i < 22; i++) {
+            String cat = cats[i % cats.length];
+            int severity = 1 + rnd.nextInt(5);
+            int reportedMinutesAgo = 20 + rnd.nextInt(460); // within last ~8 hours
+            LocalDateTime reportedAt = now.minusMinutes(reportedMinutesAgo);
+            int slaMinutes = severity >= 4 ? 10 : 15;
+
+            // ~70% resolved, rest spread across active statuses
+            int roll = rnd.nextInt(10);
+            String status;
+            LocalDateTime dispatchedAt = null;
+            LocalDateTime resolvedAt = null;
+            String assignedUnit = null;
+
+            int responseMinutes = 2 + rnd.nextInt(14); // 2..15 min response
+            if (roll < 7) {
+                status = "Resolved";
+                dispatchedAt = reportedAt.plusMinutes(responseMinutes);
+                resolvedAt = dispatchedAt.plusMinutes(15 + rnd.nextInt(60));
+                assignedUnit = "RES-00" + (1 + (i % 9));
+            } else if (roll == 7) {
+                status = "On-Scene";
+                dispatchedAt = reportedAt.plusMinutes(responseMinutes);
+                assignedUnit = "RES-00" + (1 + (i % 9));
+            } else if (roll == 8) {
+                status = "En-Route";
+                dispatchedAt = reportedAt.plusMinutes(responseMinutes);
+                assignedUnit = "RES-00" + (1 + (i % 9));
+            } else {
+                status = "Reported";
+            }
+
+            String id = String.format("INC-2026-%03d", startIdx + i);
+            if (incidentRepository.existsById(id)) continue;
+
+            Incident inc = Incident.builder()
+                    .id(id)
+                    .title(cat.substring(0, 1) + cat.substring(1).toLowerCase().replace("_", " ") + " incident at " + locations[i % locations.length])
+                    .type(cat)
+                    .category(cat)
+                    .description("Auto-seeded historical " + cat + " incident for analytics enrichment.")
+                    .severity(severity)
+                    .status(status)
+                    .assignedUnitId(assignedUnit)
+                    .assignedResourceIds(assignedUnit != null ? Arrays.asList(assignedUnit) : new java.util.ArrayList<>())
+                    .locationName(locations[i % locations.length] + ", Vadodara")
+                    .lat(22.28 + rnd.nextDouble() * 0.12)
+                    .lng(73.14 + rnd.nextDouble() * 0.10)
+                    .reporterRole("Citizen")
+                    .reporterEmail("citizen@resqgrid.gov")
+                    .reporterName("Aarav Patel")
+                    .affectedPeople(rnd.nextInt(20))
+                    .casualties(severity >= 4 ? rnd.nextInt(6) : rnd.nextInt(2))
+                    .slaMinutes(slaMinutes)
+                    .aiConfidence(0.80 + rnd.nextDouble() * 0.19)
+                    .reportedAt(reportedAt)
+                    .dispatchedAt(dispatchedAt)
+                    .resolvedAt(resolvedAt)
+                    .build();
+            batch.add(inc);
+        }
+
+        incidentRepository.saveAll(batch);
+        log.info("Seeded {} historical incidents for analytics.", batch.size());
     }
 
     private void seedResources() {

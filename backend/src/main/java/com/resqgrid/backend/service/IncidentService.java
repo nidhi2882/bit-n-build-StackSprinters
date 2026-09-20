@@ -520,6 +520,16 @@ public class IncidentService {
             }
         }
 
+        // Stamp lifecycle timestamps so analytics (response time, SLA) reflect real data.
+        LocalDateTime now = LocalDateTime.now();
+        if (("En-Route".equalsIgnoreCase(status) || "En Route".equalsIgnoreCase(status) || "Assigned".equalsIgnoreCase(status))
+                && incident.getDispatchedAt() == null) {
+            incident.setDispatchedAt(now);
+        }
+        if ("Resolved".equalsIgnoreCase(status)) {
+            incident.setResolvedAt(now);
+        }
+
         incident.setStatus(status);
         Incident saved = incidentRepository.save(incident);
         mongoSyncService.syncIncident(saved);
@@ -577,14 +587,24 @@ public class IncidentService {
                 .orElseThrow(() -> new RuntimeException("Resource not found: " + resourceId));
 
         // 1. Update Incident
+        if (incident.getAssignedResourceIds() == null) {
+            incident.setAssignedResourceIds(new ArrayList<>());
+        }
         if (!incident.getAssignedResourceIds().contains(resourceId)) {
             incident.getAssignedResourceIds().add(resourceId);
-            if ("Reported".equalsIgnoreCase(incident.getStatus())) {
-                incident.setStatus("Assigned");
-            }
-            incidentRepository.save(incident);
-            mongoSyncService.syncIncident(incident);
         }
+        if ("Reported".equalsIgnoreCase(incident.getStatus())) {
+            incident.setStatus("Assigned");
+        }
+        // Set the primary assigned unit so the CAD queue "Assigned Unit" column reflects it.
+        if (incident.getAssignedUnitId() == null || incident.getAssignedUnitId().trim().isEmpty()) {
+            incident.setAssignedUnitId(resourceId);
+        }
+        if (incident.getDispatchedAt() == null) {
+            incident.setDispatchedAt(LocalDateTime.now());
+        }
+        incidentRepository.save(incident);
+        mongoSyncService.syncIncident(incident);
 
         // 2. Update Resource
         resource.setStatus("En-Route");
@@ -636,6 +656,12 @@ public class IncidentService {
         resource.setAssignedIncidentId(null);
         resourceRepository.save(resource);
         mongoSyncService.syncResource(resource);
+
+        // Keep the primary assigned unit consistent with the remaining resources.
+        if (resourceId.equalsIgnoreCase(incident.getAssignedUnitId())) {
+            List<String> remainingIds = incident.getAssignedResourceIds();
+            incident.setAssignedUnitId(remainingIds != null && !remainingIds.isEmpty() ? remainingIds.get(0) : null);
+        }
 
         // 3. Revert incident status based on remaining assigned units
         if (incident.getAssignedResourceIds() == null || incident.getAssignedResourceIds().isEmpty()) {

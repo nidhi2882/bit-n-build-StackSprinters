@@ -2,6 +2,106 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import copilotService from "../../services/copilotService";
 
+// Render inline markdown: **bold**, *italic*, `code`, and [INC-2026-001] pills.
+function renderInline(text, keyPrefix) {
+    const nodes = [];
+    // Split on bold/italic/code tokens while keeping the delimiters
+    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+    const parts = text.split(regex);
+    parts.forEach((part, i) => {
+        if (!part) return;
+        if (part.startsWith("**") && part.endsWith("**")) {
+            nodes.push(<strong key={`${keyPrefix}-b-${i}`} className="font-bold">{part.slice(2, -2)}</strong>);
+        } else if (part.startsWith("*") && part.endsWith("*")) {
+            nodes.push(<em key={`${keyPrefix}-i-${i}`} className="italic opacity-90">{part.slice(1, -1)}</em>);
+        } else if (part.startsWith("`") && part.endsWith("`")) {
+            nodes.push(
+                <code key={`${keyPrefix}-c-${i}`} className="px-1 py-0.5 rounded bg-surface-container-high text-primary font-mono text-[11px]">
+                    {part.slice(1, -1)}
+                </code>
+            );
+        } else {
+            nodes.push(<span key={`${keyPrefix}-t-${i}`}>{part}</span>);
+        }
+    });
+    return nodes;
+}
+
+// Lightweight markdown -> React renderer for copilot replies (headers, lists, rules, bold).
+function renderMarkdown(content) {
+    if (!content) return null;
+    const lines = String(content).split("\n");
+    const blocks = [];
+    let listBuffer = [];
+    let listType = null; // "ul" | "ol"
+
+    const flushList = (key) => {
+        if (listBuffer.length === 0) return;
+        const items = listBuffer.map((li, idx) => (
+            <li key={`li-${key}-${idx}`} className="ml-1">{renderInline(li, `li-${key}-${idx}`)}</li>
+        ));
+        if (listType === "ol") {
+            blocks.push(<ol key={`ol-${key}`} className="list-decimal list-inside space-y-1 my-1.5">{items}</ol>);
+        } else {
+            blocks.push(<ul key={`ul-${key}`} className="list-disc list-inside space-y-1 my-1.5">{items}</ul>);
+        }
+        listBuffer = [];
+        listType = null;
+    };
+
+    lines.forEach((raw, idx) => {
+        const line = raw.trimEnd();
+        const trimmed = line.trim();
+
+        if (trimmed === "") { flushList(idx); return; }
+
+        // Horizontal rule
+        if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+            flushList(idx);
+            blocks.push(<hr key={`hr-${idx}`} className="my-2.5 border-current/15" />);
+            return;
+        }
+
+        // Headers (#, ##, ###, ####)
+        const headerMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+        if (headerMatch) {
+            flushList(idx);
+            const level = headerMatch[1].length;
+            const sizeClass = level <= 2 ? "text-sm" : "text-[13px]";
+            blocks.push(
+                <div key={`h-${idx}`} className={`font-bold ${sizeClass} mt-2 mb-1 text-current`}>
+                    {renderInline(headerMatch[2], `h-${idx}`)}
+                </div>
+            );
+            return;
+        }
+
+        // Ordered list item
+        const olMatch = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
+        if (olMatch) {
+            if (listType && listType !== "ol") flushList(idx);
+            listType = "ol";
+            listBuffer.push(olMatch[2]);
+            return;
+        }
+
+        // Unordered list item (-, *, •)
+        const ulMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+        if (ulMatch) {
+            if (listType && listType !== "ul") flushList(idx);
+            listType = "ul";
+            listBuffer.push(ulMatch[1]);
+            return;
+        }
+
+        // Regular paragraph
+        flushList(idx);
+        blocks.push(<p key={`p-${idx}`} className="my-1 leading-relaxed">{renderInline(trimmed, `p-${idx}`)}</p>);
+    });
+    flushList("end");
+    return blocks;
+}
+
 export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, category = "FLOOD" }) {
     const [messages, setMessages] = useState([
         {
@@ -141,8 +241,12 @@ export default function CopilotDrawer({ isOpen, onClose, activeIncident = null, 
                                 ? "bg-primary text-on-primary rounded-br-none"
                                 : "bg-surface-container border border-surface-container-high text-on-surface rounded-bl-none"
                         }`}>
-                            <div className="leading-relaxed whitespace-pre-wrap break-words">
-                                {m.content}
+                            <div className="leading-relaxed break-words">
+                                {m.role === "user" ? (
+                                    <span className="whitespace-pre-wrap">{m.content}</span>
+                                ) : (
+                                    renderMarkdown(m.content)
+                                )}
                             </div>
 
                             {/* Citations Pills */}

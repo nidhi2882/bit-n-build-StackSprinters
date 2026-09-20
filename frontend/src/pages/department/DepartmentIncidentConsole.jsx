@@ -189,6 +189,20 @@ export default function DepartmentIncidentConsole({ departmentKey: propDeptKey =
     const deployedUnits = units.filter((u) => u.status !== "Available");
     const availableUnits = units.filter((u) => u.status === "Available");
 
+    // Live resource readiness derived from actual units (grouped by unit type). Falls back
+    // to the static config only when no live units are loaded for this department.
+    const liveReadiness = useMemo(() => {
+        if (!units || units.length === 0) return config.resourceReadiness;
+        const groups = {};
+        units.forEach((u) => {
+            const key = u.type || "General Units";
+            if (!groups[key]) groups[key] = { name: key, total: 0, available: 0 };
+            groups[key].total += 1;
+            if ((u.status || "").toLowerCase() === "available") groups[key].available += 1;
+        });
+        return Object.values(groups);
+    }, [units, config.resourceReadiness]);
+
     return (
         <div className="bg-background font-body-md text-on-surface antialiased min-h-screen">
             {/* Mobile Drawer Overlay */}
@@ -383,8 +397,8 @@ export default function DepartmentIncidentConsole({ departmentKey: propDeptKey =
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {config.resourceReadiness.map((res, idx) => {
-                                        const pct = Math.round((res.available / res.total) * 100);
+                                    {liveReadiness.map((res, idx) => {
+                                        const pct = res.total > 0 ? Math.round((res.available / res.total) * 100) : 0;
                                         return (
                                             <div key={idx} className="p-3 rounded-lg bg-surface-container-low border border-surface-container-high flex flex-col gap-1.5">
                                                 <div className="flex items-center justify-between text-xs">

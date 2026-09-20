@@ -87,12 +87,29 @@ export default function SuperAdminAnalyticsPage() {
     const deployed = analytics.deployedUnits ?? Math.max(0, totalUnits - available);
     const availPct = totalUnits > 0 ? Math.round((available / totalUnits) * 100) : 0;
 
-    // Static response-time percentile sample (P50/P90/P99) for the mini bar chart
+    // Dynamic response-time percentiles (fall back to derived values if absent)
+    const p50 = analytics.responseP50 ?? analytics.avgResponseMinutes ?? 0;
+    const p90 = analytics.responseP90 ?? (p50 * 1.5);
+    const p99 = analytics.responseP99 ?? (p50 * 2.3);
+    const pctMax = Math.max(p50, p90, p99, 5);
     const percentiles = [
-        { label: "P50", value: analytics.avgResponseMinutes || 4.2, max: 12 },
-        { label: "P90", value: 6.2, max: 12 },
-        { label: "P99", value: 11.4, max: 12 },
+        { label: "P50", value: p50, max: pctMax },
+        { label: "P90", value: p90, max: pctMax },
+        { label: "P99", value: p99, max: pctMax },
     ];
+
+    // Severity distribution (P1..P5)
+    const severityColors = { P1: "#22c55e", P2: "#84cc16", P3: "#f59e0b", P4: "#f97316", P5: "#ef4444" };
+    const severityEntries = Object.entries(analytics.bySeverity || {});
+    const maxSevVal = Math.max(...severityEntries.map(([, v]) => v), 1);
+
+    // Hourly incident trend
+    const hourlyTrend = analytics.hourlyTrend || [];
+    const maxTrend = Math.max(...hourlyTrend.map((h) => h.count || 0), 1);
+
+    // Department readiness (dynamic list from backend)
+    const departmentReadiness = analytics.departmentReadiness || [];
+    const slaColor = analytics.slaComplianceRate ?? 98.4;
 
     return (
         <div className="bg-background font-body-md text-on-surface antialiased min-h-screen">
@@ -144,9 +161,9 @@ export default function SuperAdminAnalyticsPage() {
                             <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high">
                                 <span className="text-xs text-on-surface-variant uppercase font-semibold">Median Response Turnaround</span>
                                 <div className="font-display-lg text-3xl font-bold font-code-tabular mt-1 text-primary">
-                                    {analytics.avgResponseMinutes || 4.2}m
+                                    {p50 || analytics.avgResponseMinutes || 0}m
                                 </div>
-                                <span className="text-xs text-secondary font-semibold mt-2 inline-block">SLA Target: 5.0m</span>
+                                <span className="text-xs text-secondary font-semibold mt-2 inline-block">SLA Compliance: {slaColor}%</span>
                             </div>
 
                             <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high">
@@ -185,51 +202,38 @@ export default function SuperAdminAnalyticsPage() {
                                 </div>
                             </div>
 
-                            {/* Response Efficiency Table */}
+                            {/* Dynamic Inter-Agency Readiness Index */}
                             <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high">
                                 <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-4">
                                     Inter-Agency Readiness Index
                                 </h3>
-                                <div className="space-y-4">
-                                    <div className="p-3 bg-surface-container-low rounded-lg flex items-center justify-between">
-                                        <div>
-                                            <div className="font-bold text-sm text-on-surface">Emergency Response Center</div>
-                                            <div className="text-xs text-on-surface-variant">Central Command Node</div>
-                                        </div>
-                                        <span className="px-2.5 py-1 rounded-full bg-secondary-container text-secondary text-xs font-bold font-code-tabular">
-                                            99.98% SLA
-                                        </span>
-                                    </div>
-
-                                    <div className="p-3 bg-surface-container-low rounded-lg flex items-center justify-between">
-                                        <div>
-                                            <div className="font-bold text-sm text-on-surface">Water & Flood Command (NDRF)</div>
-                                            <div className="text-xs text-on-surface-variant">Sector 4 Inundation Basin</div>
-                                        </div>
-                                        <span className="px-2.5 py-1 rounded-full bg-primary-container text-on-primary-container text-xs font-bold font-code-tabular">
-                                            98.4% SLA
-                                        </span>
-                                    </div>
-
-                                    <div className="p-3 bg-surface-container-low rounded-lg flex items-center justify-between">
-                                        <div>
-                                            <div className="font-bold text-sm text-on-surface">Vadodara Fire Department</div>
-                                            <div className="text-xs text-on-surface-variant">Central Fire & Foam Tenders</div>
-                                        </div>
-                                        <span className="px-2.5 py-1 rounded-full bg-secondary-container text-secondary text-xs font-bold font-code-tabular">
-                                            99.1% SLA
-                                        </span>
-                                    </div>
-
-                                    <div className="p-3 bg-surface-container-low rounded-lg flex items-center justify-between">
-                                        <div>
-                                            <div className="font-bold text-sm text-on-surface">SSG Trauma Medical EMS</div>
-                                            <div className="text-xs text-on-surface-variant">Emergency Resuscitation & ALS</div>
-                                        </div>
-                                        <span className="px-2.5 py-1 rounded-full bg-secondary-container text-secondary text-xs font-bold font-code-tabular">
-                                            97.8% SLA
-                                        </span>
-                                    </div>
+                                <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                                    {departmentReadiness.length === 0 ? (
+                                        <p className="text-xs text-on-surface-variant">No department telemetry available.</p>
+                                    ) : (
+                                        departmentReadiness.map((d) => {
+                                            const sla = d.slaCompliance ?? 99;
+                                            const badgeClass = sla >= 99 ? "bg-secondary-container text-secondary"
+                                                : sla >= 95 ? "bg-primary-container text-on-primary-container"
+                                                : "bg-error-container text-error";
+                                            return (
+                                                <div key={d.department} className="p-3 bg-surface-container-low rounded-lg flex items-center justify-between">
+                                                    <div className="min-w-0">
+                                                        <div className="font-bold text-sm text-on-surface">{d.department.replace("_", " ")} Command</div>
+                                                        <div className="text-xs text-on-surface-variant">
+                                                            {d.availableUnits}/{d.totalUnits} units ready • {d.activeIncidents} active
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="text-xs font-code-tabular text-on-surface-variant">{d.readinessPct}%</span>
+                                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold font-code-tabular ${badgeClass}`}>
+                                                            {sla}% SLA
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -337,6 +341,81 @@ export default function SuperAdminAnalyticsPage() {
                                 <div className="text-center text-[10px] text-on-surface-variant mt-2">
                                     Target SLA: 5.0m • lower is better
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Severity Distribution + Hourly Trend Row */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
+                            {/* Severity Distribution Bars */}
+                            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high">
+                                <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-4">
+                                    Severity Distribution (P1–P5)
+                                </h3>
+                                <div className="flex items-end justify-around h-48 gap-3 pt-2">
+                                    {severityEntries.map(([sev, val]) => {
+                                        const heightPct = Math.round((val / maxSevVal) * 100);
+                                        return (
+                                            <div key={sev} className="flex flex-col items-center gap-2 flex-1">
+                                                <span className="font-code-tabular text-xs font-bold text-on-surface">{val}</span>
+                                                <div className="w-full bg-surface-container-low rounded-t-lg flex items-end" style={{ height: "130px" }}>
+                                                    <div
+                                                        className="w-full rounded-t-lg transition-all duration-500"
+                                                        style={{ height: `${Math.max(heightPct, 4)}%`, background: severityColors[sev] || "#6366f1" }}
+                                                    ></div>
+                                                </div>
+                                                <span className="text-[11px] font-mono font-bold text-on-surface-variant">{sev}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="text-center text-[10px] text-on-surface-variant mt-2">
+                                    Green = low priority • Red = critical
+                                </div>
+                            </div>
+
+                            {/* Hourly Incident Trend (area/line) */}
+                            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high">
+                                <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-4">
+                                    Incident Inflow — Last 8 Hours
+                                </h3>
+                                {hourlyTrend.length === 0 ? (
+                                    <p className="text-xs text-on-surface-variant">No trend data yet.</p>
+                                ) : (
+                                    <div className="relative h-48">
+                                        <svg viewBox="0 0 320 160" preserveAspectRatio="none" className="w-full h-40">
+                                            {/* gridlines */}
+                                            {[0, 1, 2, 3].map((g) => (
+                                                <line key={g} x1="0" y1={g * 40} x2="320" y2={g * 40} stroke="currentColor" className="text-surface-container-high" strokeWidth="0.5" />
+                                            ))}
+                                            {(() => {
+                                                const step = 320 / Math.max(hourlyTrend.length - 1, 1);
+                                                const points = hourlyTrend.map((h, i) => {
+                                                    const x = i * step;
+                                                    const y = 150 - ((h.count || 0) / maxTrend) * 130;
+                                                    return `${x},${y}`;
+                                                });
+                                                const areaPath = `M0,150 L${points.join(" L")} L320,150 Z`;
+                                                const linePath = `M${points.join(" L")}`;
+                                                return (
+                                                    <>
+                                                        <path d={areaPath} fill="var(--md-sys-color-primary, #2563eb)" opacity="0.12" />
+                                                        <path d={linePath} fill="none" stroke="var(--md-sys-color-primary, #2563eb)" strokeWidth="2" />
+                                                        {hourlyTrend.map((h, i) => {
+                                                            const x = i * step;
+                                                            const y = 150 - ((h.count || 0) / maxTrend) * 130;
+                                                            return <circle key={i} cx={x} cy={y} r="3" fill="var(--md-sys-color-primary, #2563eb)" />;
+                                                        })}
+                                                    </>
+                                                );
+                                            })()}
+                                        </svg>
+                                        <div className="flex justify-between text-[10px] font-mono text-on-surface-variant mt-1">
+                                            {hourlyTrend.map((h, i) => (
+                                                <span key={i}>{h.label}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

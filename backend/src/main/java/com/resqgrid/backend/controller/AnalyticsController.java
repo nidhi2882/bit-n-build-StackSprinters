@@ -51,19 +51,101 @@ public class AnalyticsController {
                 .count();
         long deployedUnits = resources.size() - availableUnits;
 
+        List<String> CATEGORIES = java.util.Arrays.asList("FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE");
+
         // Incident volume grouped by normalized department category (for the analytics chart)
         Map<String, Long> byCategory = new java.util.LinkedHashMap<>();
-        for (String cat : java.util.Arrays.asList("FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE")) {
-            byCategory.put(cat, 0L);
-        }
+        for (String cat : CATEGORIES) byCategory.put(cat, 0L);
         for (Incident inc : incidents) {
-            String raw = inc.getCategory() != null ? inc.getCategory() : inc.getType();
-            com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(raw);
-            String key = dc != null ? dc.name() : null;
-            if (key != null) {
-                byCategory.merge(key, 1L, Long::sum);
+            String key = normalizeCat(inc);
+            if (key != null) byCategory.merge(key, 1L, Long::sum);
+        }
+
+        // Severity distribution (P1..P5)
+        Map<String, Long> bySeverity = new java.util.LinkedHashMap<>();
+        for (int s = 1; s <= 5; s++) bySeverity.put("P" + s, 0L);
+        for (Incident inc : incidents) {
+            int sev = inc.getSeverity() != null ? Math.max(1, Math.min(5, inc.getSeverity())) : 3;
+            bySeverity.merge("P" + sev, 1L, Long::sum);
+        }
+
+        // Status distribution
+        Map<String, Long> byStatus = new java.util.LinkedHashMap<>();
+        for (String st : java.util.Arrays.asList("Reported", "Assigned", "En-Route", "On-Scene", "Resolved")) byStatus.put(st, 0L);
+        for (Incident inc : incidents) {
+            String st = canonicalStatus(inc.getStatus());
+            byStatus.merge(st, 1L, Long::sum);
+        }
+
+        // Real response-time metrics from dispatchedAt - reportedAt (minutes)
+        List<Double> responseTimes = new java.util.ArrayList<>();
+        for (Incident inc : incidents) {
+            if (inc.getReportedAt() != null && inc.getDispatchedAt() != null) {
+                double mins = java.time.Duration.between(inc.getReportedAt(), inc.getDispatchedAt()).toSeconds() / 60.0;
+                if (mins >= 0 && mins < 600) responseTimes.add(mins);
             }
         }
+        responseTimes.sort(Double::compareTo);
+        double avgResponse = responseTimes.isEmpty() ? 0.0
+                : Math.round(responseTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0) * 10) / 10.0;
+        double p50 = percentile(responseTimes, 50);
+        double p90 = percentile(responseTimes, 90);
+        double p99 = percentile(responseTimes, 99);
+
+        // SLA compliance: dispatched within slaMinutes of reporting
+        long slaEligible = 0, slaMet = 0;
+        for (Incident inc : incidents) {
+            if (inc.getReportedAt() != null && inc.getDispatchedAt() != null) {
+                slaEligible++;
+                int sla = inc.getSlaMinutes() != null ? inc.getSlaMinutes() : 10;
+                double mins = java.time.Duration.between(inc.getReportedAt(), inc.getDispatchedAt()).toSeconds() / 60.0;
+                if (mins <= sla) slaMet++;
+            }
+        }
+        double slaCompliance = slaEligible == 0 ? 100.0 : Math.round((slaMet * 1000.0) / slaEligible) / 10.0;
+
+        // Per-department readiness (dynamic replacement for the hardcoded readiness list)
+        List<Map<String, Object>> departmentReadiness = new java.util.ArrayList<>();
+        for (String cat : CATEGORIES) {
+            long deptTotal = resources.stream().filter(r -> cat.equalsIgnoreCase(normalizeDept(r.getDepartmentCategory()))).count();
+            long deptAvail = resources.stream().filter(r -> cat.equalsIgnoreCase(normalizeDept(r.getDepartmentCategory())) && "Available".equalsIgnoreCase(r.getStatus())).count();
+            long deptActive = incidents.stream().filter(i -> cat.equals(normalizeCat(i)) && !"Resolved".equalsIgnoreCase(i.getStatus())).count();
+            long deptSlaEligible = 0, deptSlaMet = 0;
+            for (Incident inc : incidents) {
+                if (cat.equals(normalizeCat(inc)) && inc.getReportedAt() != null && inc.getDispatchedAt() != null) {
+                    deptSlaEligible++;
+                    int sla = inc.getSlaMinutes() != null ? inc.getSlaMinutes() : 10;
+                    double mins = java.time.Duration.between(inc.getReportedAt(), inc.getDispatchedAt()).toSeconds() / 60.0;
+                    if (mins <= sla) deptSlaMet++;
+                }
+            }
+            double deptSla = deptSlaEligible == 0 ? 99.0 : Math.round((deptSlaMet * 1000.0) / deptSlaEligible) / 10.0;
+            Map<String, Object> d = new java.util.LinkedHashMap<>();
+            d.put("department", cat);
+            d.put("totalUnits", deptTotal);
+            d.put("availableUnits", deptAvail);
+            d.put("activeIncidents", deptActive);
+            d.put("readinessPct", deptTotal == 0 ? 0 : Math.round((deptAvail * 100.0) / deptTotal));
+            d.put("slaCompliance", deptSla);
+            departmentReadiness.add(d);
+        }
+
+        // Incidents-over-time trend (last 8 hourly buckets by reportedAt)
+        List<Map<String, Object>> hourlyTrend = new java.util.ArrayList<>();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        for (int h = 7; h >= 0; h--) {
+            java.time.LocalDateTime bucketStart = now.minusHours(h + 1);
+            java.time.LocalDateTime bucketEnd = now.minusHours(h);
+            long count = incidents.stream().filter(i -> i.getReportedAt() != null
+                    && !i.getReportedAt().isBefore(bucketStart) && i.getReportedAt().isBefore(bucketEnd)).count();
+            Map<String, Object> b = new java.util.LinkedHashMap<>();
+            b.put("label", bucketEnd.getHour() + ":00");
+            b.put("count", count);
+            hourlyTrend.add(b);
+        }
+
+        long totalAffected = incidents.stream().mapToLong(i -> i.getAffectedPeople() != null ? i.getAffectedPeople() : 0).sum();
+        long totalCasualties = incidents.stream().mapToLong(i -> i.getCasualties() != null ? i.getCasualties() : 0).sum();
 
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("totalIncidents", incidents.size());
@@ -74,13 +156,51 @@ public class AnalyticsController {
         metrics.put("availableUnits", availableUnits);
         metrics.put("deployedUnits", deployedUnits);
         metrics.put("activeAlertsCount", alertService.getActiveAlerts().size());
-        metrics.put("avgResponseTimeMinutes", 4.3);
-        metrics.put("avgResponseMinutes", 4.3);
-        metrics.put("slaComplianceRate", 98.4);
+        metrics.put("avgResponseTimeMinutes", avgResponse);
+        metrics.put("avgResponseMinutes", avgResponse);
+        metrics.put("responseP50", p50);
+        metrics.put("responseP90", p90);
+        metrics.put("responseP99", p99);
+        metrics.put("slaComplianceRate", slaCompliance);
         metrics.put("byCategory", byCategory);
+        metrics.put("bySeverity", bySeverity);
+        metrics.put("byStatus", byStatus);
+        metrics.put("departmentReadiness", departmentReadiness);
+        metrics.put("hourlyTrend", hourlyTrend);
+        metrics.put("totalAffectedPeople", totalAffected);
+        metrics.put("totalCasualties", totalCasualties);
         metrics.put("resourceUtilizationRate", resources.isEmpty() ? 0 : Math.round((deployedUnits * 100.0) / resources.size()));
 
         return ResponseEntity.ok(metrics);
+    }
+
+    private String normalizeCat(Incident inc) {
+        String raw = inc.getCategory() != null ? inc.getCategory() : inc.getType();
+        com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(raw);
+        return dc != null ? dc.name() : null;
+    }
+
+    private String normalizeDept(String raw) {
+        if (raw == null) return null;
+        com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(raw);
+        return dc != null ? dc.name() : raw.toUpperCase().replace("CAT_", "").trim();
+    }
+
+    private String canonicalStatus(String status) {
+        if (status == null) return "Reported";
+        String s = status.toLowerCase().replace("-", "").replace(" ", "");
+        if (s.contains("resolve")) return "Resolved";
+        if (s.contains("scene") || s.contains("arrive") || s.contains("site")) return "On-Scene";
+        if (s.contains("route")) return "En-Route";
+        if (s.contains("assign")) return "Assigned";
+        return "Reported";
+    }
+
+    private double percentile(List<Double> sorted, int p) {
+        if (sorted == null || sorted.isEmpty()) return 0.0;
+        int idx = (int) Math.ceil((p / 100.0) * sorted.size()) - 1;
+        idx = Math.max(0, Math.min(sorted.size() - 1, idx));
+        return Math.round(sorted.get(idx) * 10) / 10.0;
     }
 
     @GetMapping("/department")
