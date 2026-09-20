@@ -84,7 +84,7 @@ public class RealTimeEventPublisher {
     /**
      * Broadcasts alert:escalated SLA alert to authority and dept
      */
-    public void publishAlertEscalated(String message, Long incidentId, String level) {
+    public void publishAlertEscalated(String message, String incidentId, String level) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("eventType", "alert:escalated");
         payload.put("timestamp", Instant.now().toString());
