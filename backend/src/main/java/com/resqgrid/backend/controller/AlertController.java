@@ -1,8 +1,10 @@
 package com.resqgrid.backend.controller;
 
 import com.resqgrid.backend.entity.Alert;
+import com.resqgrid.backend.security.UserPrincipal;
 import com.resqgrid.backend.service.AlertService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,8 +20,8 @@ public class AlertController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Alert>> getActiveAlerts() {
-        return ResponseEntity.ok(alertService.getActiveAlerts());
+    public ResponseEntity<List<Alert>> getActiveAlerts(@AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(alertService.getScopedActiveAlerts(currentUser));
     }
 
     @PostMapping

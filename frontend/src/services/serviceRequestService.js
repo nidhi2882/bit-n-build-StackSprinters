@@ -31,6 +31,11 @@ export const serviceRequestService = {
         }
     },
 
+    // Alias used by dashboards/consoles that refer to "outgoing" requests
+    getOutgoingRequests: async () => {
+        return serviceRequestService.getSentRequests();
+    },
+
     createRequest: async (requestData) => {
         const response = await apiClient.post("/service-requests", requestData);
         return response.data;
@@ -49,5 +54,21 @@ export const serviceRequestService = {
     resolveRequest: async (requestId) => {
         const response = await apiClient.patch(`/service-requests/${requestId}/resolve`, {});
         return response.data;
+    },
+
+    // Unified status transition helper used by consoles.
+    // Routes ACCEPTED/DECLINED/RESOLVED to the correct backend endpoint.
+    updateStatus: async (requestId, status, extra = {}) => {
+        const normalized = (status || "").toUpperCase();
+        if (normalized === "ACCEPTED") {
+            return serviceRequestService.acceptRequest(requestId, extra.assignedUnitId || null);
+        }
+        if (normalized === "DECLINED") {
+            return serviceRequestService.declineRequest(requestId, extra.declineReason || "Operational units committed");
+        }
+        if (normalized === "RESOLVED") {
+            return serviceRequestService.resolveRequest(requestId);
+        }
+        throw new Error(`Unsupported service request status transition: ${status}`);
     }
 };

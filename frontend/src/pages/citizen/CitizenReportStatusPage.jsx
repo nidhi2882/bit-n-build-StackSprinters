@@ -5,27 +5,32 @@ import { incidentService } from "../../services/incidentService";
 export default function CitizenReportStatusPage() {
     const { id } = useParams();
     const [incident, setIncident] = useState(null);
+    const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadIncident();
-        const interval = setInterval(loadIncident, 10000); // live updates
+        const interval = setInterval(loadIncident, 4000); // Live real-time updates
         return () => clearInterval(interval);
     }, [id]);
 
     const loadIncident = async () => {
         try {
-            const data = await incidentService.getIncidentById(id);
+            const [data, actData] = await Promise.all([
+                incidentService.getIncidentById(id),
+                incidentService.getIncidentActivities(id).catch(() => [])
+            ]);
             if (data) {
                 setIncident(data);
             }
+            setActivities(actData || []);
         } catch (err) {
-            console.warn("Failed to load incident status, using simulated view", err);
+            console.warn("Failed to load incident status, using fallback view", err);
             setIncident({
                 id: id || "INC-2026-001",
                 title: "Emergency Response In-Progress",
                 category: "FLOOD",
-                status: "En Route",
+                status: "En-Route",
                 description: "Response unit dispatched to citizen location.",
                 locationName: "Vishwamitri River Bridge, Vadodara",
                 assignedUnitId: "RES-001 (NDRF Water Rescue)",
@@ -41,17 +46,21 @@ export default function CitizenReportStatusPage() {
     const currentStepIdx = steps.findIndex(s => s.toLowerCase() === currentStatus);
     const activeIdx = currentStepIdx >= 0 ? currentStepIdx : 1;
 
+    const assignedUnitsText = incident?.assignedResourceIds && incident.assignedResourceIds.length > 0
+        ? incident.assignedResourceIds.join(", ")
+        : (incident?.assignedUnitId || "Sector Dispatch Unit");
+
     return (
         <div className="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col justify-between">
             {/* Header */}
-            <header className="w-full bg-surface-container-lowest border-b border-surface-container-high px-4 py-3">
+            <header className="w-full bg-surface-container-lowest border-b border-surface-container-high px-4 py-3 sticky top-0 z-50">
                 <div className="max-w-3xl mx-auto flex items-center justify-between">
                     <Link to="/citizen/home" className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
                         <span className="material-symbols-outlined text-base">arrow_back</span>
                         <span>Back to Citizen Home</span>
                     </Link>
                     <span className="font-code-tabular text-xs font-bold text-on-surface">
-                        CAD: {id}
+                        CAD TICKET: {id}
                     </span>
                 </div>
             </header>
@@ -63,9 +72,12 @@ export default function CitizenReportStatusPage() {
                         <span className="px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-code-tabular text-xs font-bold">
                             {incident?.category || incident?.type || "EMERGENCY"}
                         </span>
-                        <span className="font-code-tabular text-xs text-on-surface-variant font-bold">
-                            TICKET #{id}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                            <span className="font-code-tabular text-xs text-primary font-bold">
+                                LIVE TELEMETRY SYNC
+                            </span>
+                        </div>
                     </div>
 
                     <div>
@@ -73,7 +85,7 @@ export default function CitizenReportStatusPage() {
                             {incident?.title || "Active Emergency Report"}
                         </h1>
                         <p className="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
-                            <span className="material-symbols-outlined text-sm">location_on</span>
+                            <span className="material-symbols-outlined text-sm text-primary">location_on</span>
                             <span>{incident?.locationName || "Reported Location Coordinates"}</span>
                         </p>
                     </div>
@@ -81,7 +93,7 @@ export default function CitizenReportStatusPage() {
                     {/* Progress Stepper */}
                     <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high">
                         <span className="text-xs text-on-surface-variant uppercase font-bold block mb-4">
-                            Response Progression Status
+                            Official Progression Status
                         </span>
                         <div className="flex items-center justify-between relative">
                             <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-surface-container-high -translate-y-1/2"></div>
@@ -91,7 +103,7 @@ export default function CitizenReportStatusPage() {
                                 return (
                                     <div key={step} className="flex flex-col items-center gap-1 z-10">
                                         <div
-                                            className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                                                 isCurrent
                                                     ? "bg-primary text-on-primary ring-4 ring-primary-container/40"
                                                     : isPassed
@@ -110,34 +122,74 @@ export default function CitizenReportStatusPage() {
                         </div>
                     </div>
 
-                    {/* Assigned Unit Card */}
+                    {/* Assigned Unit & Dispatch Info Card */}
                     <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high space-y-2">
-                        <span className="text-xs text-on-surface-variant uppercase font-bold block">
-                            Assigned Emergency Team
-                        </span>
                         <div className="flex items-center justify-between">
+                            <span className="text-xs text-on-surface-variant uppercase font-bold block">
+                                Assigned Emergency Unit Status
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-secondary-container text-secondary text-[11px] font-bold font-code-tabular uppercase">
+                                {incident?.status || "Reported"}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center font-bold">
+                                <div className="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center font-bold shadow-sm">
                                     <span className="material-symbols-outlined text-xl">local_shipping</span>
                                 </div>
                                 <div>
                                     <div className="font-bold text-sm text-on-surface">
-                                        {incident?.assignedUnitId || "Central Dispatch Unit"}
+                                        {assignedUnitsText}
                                     </div>
                                     <div className="text-xs text-secondary font-semibold">
-                                        GPS Transponder Active • En Route
+                                        {incident?.status === "Resolved" ? "Operation Complete • Clearance Verified" : "GPS Transponder Active • Command Synced"}
                                     </div>
                                 </div>
                             </div>
-                            <span className="px-2.5 py-1 rounded-full bg-secondary-container text-secondary text-xs font-bold font-code-tabular">
-                                Priority Dispatch
-                            </span>
                         </div>
                     </div>
 
+                    {/* Live Dispatch Activity Timeline Feed */}
+                    <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high space-y-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-on-surface-variant uppercase font-bold flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-sm text-primary">history</span>
+                                <span>Real-Time Operator Activity Feed</span>
+                            </span>
+                            <span className="text-[10px] text-on-surface-variant font-code-tabular">
+                                {activities.length} Updates Recorded
+                            </span>
+                        </div>
+
+                        {activities.length === 0 ? (
+                            <div className="p-3 rounded-xl bg-surface-container-lowest border border-surface-container-high text-xs text-on-surface-variant">
+                                <span className="font-semibold text-on-surface">✓ Report Logged:</span> Marked as Seen & Queue Staged for Sector Command Review.
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {activities.map((act, idx) => (
+                                    <div key={act.id || idx} className="p-3 rounded-xl bg-surface-container-lowest border border-surface-container-high text-xs flex items-start gap-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                                            <span className="material-symbols-outlined text-xs">info</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-bold text-on-surface">
+                                                {act.activityText}
+                                            </div>
+                                            <div className="text-[10px] text-on-surface-variant mt-0.5 flex items-center justify-between">
+                                                <span>Actor: {act.actor || "Operator"}</span>
+                                                <span>{act.createdAt ? new Date(act.createdAt).toLocaleTimeString() : "Just now"}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Description Details */}
-                    <div className="space-y-2 text-xs">
-                        <span className="font-bold text-on-surface block">Incident Summary:</span>
+                    <div className="space-y-1 text-xs">
+                        <span className="font-bold text-on-surface block">Reported Details:</span>
                         <p className="text-on-surface-variant leading-relaxed">
                             {incident?.description || "Initial details recorded in CAD queue."}
                         </p>
@@ -157,8 +209,9 @@ export default function CitizenReportStatusPage() {
             </main>
 
             <footer className="w-full py-3 text-center text-xs text-on-surface-variant border-t border-surface-container-high/40">
-                ResQGrid Citizen CAD Tracking • Municipal Public Safety
+                ResQGrid Citizen CAD Tracking • Municipal Public Safety Network
             </footer>
         </div>
     );
 }
+

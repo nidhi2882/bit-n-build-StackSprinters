@@ -67,6 +67,7 @@ public class AuthService {
         userData.put("organization", user.getOrganization());
         userData.put("authorityId", user.getAuthorityId());
         userData.put("departmentId", user.getDepartmentId());
+        userData.put("departmentCategory", user.getDepartmentCategory());
         userData.put("facilityId", user.getFacilityId());
 
         if ("Response Team".equalsIgnoreCase(user.getRole())) {

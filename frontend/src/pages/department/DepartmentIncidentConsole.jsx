@@ -13,19 +13,29 @@ import { DEPARTMENT_KEYS } from "../../config/departmentRoutingConfig";
 
 export default function DepartmentIncidentConsole({ departmentKey: propDeptKey = null }) {
     const { user } = useAuth();
-    const isSuperAdmin = user?.role === "Super Admin" || user?.role === "SUPER_ADMIN";
+    const normalizedRole = (user?.role || "").toUpperCase().replace(" ", "_");
+    const isSuperAdmin = normalizedRole === "SUPER_ADMIN" || normalizedRole === "AUTHORITY_ADMIN";
 
-    // Determine active department key
-    const defaultKey = (user?.departmentCategory || "FLOOD").toUpperCase().replace("CAT_", "");
-    const [activeDepartment, setActiveDepartment] = useState(
-        propDeptKey ? propDeptKey.toUpperCase() : defaultKey
-    );
+    // A department admin is strictly locked to their own assigned department. Only a
+    // Super Admin may switch sectors, and only they see the sector switcher bar. This
+    // prevents cross-department 403s and guarantees each login renders its own console.
+    const ownDepartment = (user?.departmentCategory || "FLOOD").toUpperCase().replace("CAT_", "");
+    const requestedKey = propDeptKey ? propDeptKey.toUpperCase().replace("CAT_", "") : null;
+
+    const initialDepartment = isSuperAdmin
+        ? (requestedKey || ownDepartment)
+        : ownDepartment;
+
+    const [activeDepartment, setActiveDepartment] = useState(initialDepartment);
 
     useEffect(() => {
-        if (propDeptKey) {
-            setActiveDepartment(propDeptKey.toUpperCase());
+        // Non-super-admins can never leave their own department, regardless of route params.
+        if (!isSuperAdmin) {
+            setActiveDepartment(ownDepartment);
+        } else if (requestedKey) {
+            setActiveDepartment(requestedKey);
         }
-    }, [propDeptKey]);
+    }, [propDeptKey, isSuperAdmin, ownDepartment, requestedKey]);
 
     const config = DEPARTMENT_CONSOLE_CONFIGS[activeDepartment] || DEPARTMENT_CONSOLE_CONFIGS.FLOOD;
 
@@ -197,38 +207,52 @@ export default function DepartmentIncidentConsole({ departmentKey: propDeptKey =
 
                 <main className="w-full pt-16 min-h-screen px-3 sm:px-6 lg:px-8 py-6">
                     <div className="flex flex-col w-full gap-6 max-w-[1920px] mx-auto">
-                        {/* Department Switcher Bar (Visible for Super Admin or Testing Switcher) */}
-                        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-container-lowest border border-surface-container-high overflow-x-auto">
-                            <div className="flex items-center gap-2 shrink-0">
-                                <span className="material-symbols-outlined text-primary text-xl">account_balance</span>
+                        {/* Department Switcher Bar — Super Admin only. Department admins are
+                            locked to their own sector and never see this switcher. */}
+                        {isSuperAdmin ? (
+                            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-container-lowest border border-surface-container-high overflow-x-auto">
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="material-symbols-outlined text-primary text-xl">account_balance</span>
+                                    <span className="font-label-sm text-xs font-bold text-on-surface uppercase tracking-wider">
+                                        Operational Sector:
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                                    {Object.keys(DEPARTMENT_KEYS).map((key) => {
+                                        const isActive = activeDepartment === key;
+                                        const deptConf = DEPARTMENT_CONSOLE_CONFIGS[key];
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => setActiveDepartment(key)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                                                    isActive
+                                                        ? "bg-primary text-on-primary shadow-md"
+                                                        : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                                                }`}
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    {deptConf?.icon || "emergency"}
+                                                </span>
+                                                <span>{key.replace("_", " ")}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 p-3 rounded-xl bg-surface-container-lowest border border-surface-container-high">
+                                <span className="material-symbols-outlined text-primary text-xl">verified_user</span>
                                 <span className="font-label-sm text-xs font-bold text-on-surface uppercase tracking-wider">
-                                    Operational Sector:
+                                    Assigned Sector:
+                                </span>
+                                <span className="px-3 py-1 rounded-lg text-xs font-bold bg-primary text-on-primary flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-sm">{config.icon}</span>
+                                    {activeDepartment.replace("_", " ")} Command
                                 </span>
                             </div>
-
-                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                                {Object.keys(DEPARTMENT_KEYS).map((key) => {
-                                    const isActive = activeDepartment === key;
-                                    const deptConf = DEPARTMENT_CONSOLE_CONFIGS[key];
-                                    return (
-                                        <button
-                                            key={key}
-                                            onClick={() => setActiveDepartment(key)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                                                isActive
-                                                    ? "bg-primary text-on-primary shadow-md"
-                                                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                                            }`}
-                                        >
-                                            <span className="material-symbols-outlined text-sm">
-                                                {deptConf?.icon || "emergency"}
-                                            </span>
-                                            <span>{key.replace("_", " ")}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        )}
 
                         {/* Top Banner */}
                         <div

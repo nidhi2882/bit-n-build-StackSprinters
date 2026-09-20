@@ -83,6 +83,17 @@ export const incidentService = {
         return response.data;
     },
 
+    // Get incident activity timeline logs
+    getIncidentActivities: async (incidentId) => {
+        try {
+            const response = await apiClient.get(`/incidents/${incidentId}/activities`);
+            return response.data;
+        } catch (error) {
+            console.warn("Could not fetch activities", error);
+            return [];
+        }
+    },
+
     // Merge duplicate incident into master
     mergeIncidents: async (masterId, duplicateId) => {
         try {

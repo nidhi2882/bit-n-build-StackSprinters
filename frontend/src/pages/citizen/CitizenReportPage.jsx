@@ -6,11 +6,22 @@ import { detectRouting } from "../../config/departmentRoutingConfig";
 
 export default function CitizenReportPage() {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
 
-    const initialCat = searchParams.get("category") || "FLOOD";
+    const categoryList = [
+        { code: "FLOOD", name: "Flood & Inundation", icon: "waves" },
+        { code: "FIRE", name: "Fire & Explosion", icon: "local_fire_department" },
+        { code: "MEDICAL", name: "Medical Emergency", icon: "medical_services" },
+        { code: "CRASH", name: "Vehicle Highway Crash", icon: "car_crash" },
+        { code: "HAZMAT", name: "Hazardous Chemical / Gas", icon: "science" },
+        { code: "COLLAPSE", name: "Structural Collapse", icon: "domain_disabled" },
+        { code: "CYCLONE", name: "Cyclone & Severe Storm", icon: "cyclone" },
+        { code: "SEARCH_RESCUE", name: "Missing Person / SAR", icon: "travel_explore" },
+        { code: "POLICE", name: "Civil Disturbance / Police", icon: "local_police" }
+    ];
 
+    const initialCat = (searchParams.get("category") || "FLOOD").toUpperCase();
     const [category, setCategory] = useState(initialCat);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -23,6 +34,14 @@ export default function CitizenReportPage() {
     const [submitting, setSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
 
+    // Keep category state in sync with URL searchParams
+    useEffect(() => {
+        const cat = searchParams.get("category");
+        if (cat) {
+            setCategory(cat.toUpperCase());
+        }
+    }, [searchParams]);
+
     useEffect(() => {
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
@@ -34,6 +53,11 @@ export default function CitizenReportPage() {
             );
         }
     }, []);
+
+    const handleCategoryChange = (newCat) => {
+        setCategory(newCat);
+        setSearchParams({ category: newCat });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -66,14 +90,12 @@ export default function CitizenReportPage() {
         }
     };
 
-    const categories = [
-        "FLOOD", "FIRE", "MEDICAL", "CRASH", "HAZMAT", "COLLAPSE", "CYCLONE", "SEARCH_RESCUE", "POLICE"
-    ];
-
     const routingPreview = useMemo(() => {
         const text = `${title} ${description}`;
         return detectRouting(text, category);
     }, [title, description, category]);
+
+    const activeCatObj = categoryList.find(c => c.code === category) || categoryList[0];
 
     return (
         <div className="bg-background font-body-md text-on-surface antialiased min-h-screen">
@@ -99,11 +121,17 @@ export default function CitizenReportPage() {
             <main className="max-w-2xl mx-auto px-4 py-8">
                 <div className="bg-surface-container-lowest rounded-2xl shadow-xl border border-surface-container-high p-6 md:p-8">
                     <div className="mb-6">
-                        <span className="px-2.5 py-0.5 rounded-full bg-error-container text-error font-code-tabular text-xs font-bold tracking-wider uppercase">
-                            OFFICIAL DISPATCH INTAKE
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-error-container text-error font-code-tabular text-xs font-bold tracking-wider uppercase">
+                                OFFICIAL DISPATCH INTAKE
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-primary-container text-on-primary-container font-code-tabular text-xs font-bold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">{activeCatObj.icon}</span>
+                                <span>{activeCatObj.name}</span>
+                            </span>
+                        </div>
                         <h1 className="font-headline-lg text-2xl font-bold text-on-surface mt-2">
-                            Report Emergency Incident
+                            Report Emergency: {activeCatObj.name}
                         </h1>
                         <p className="text-xs md:text-sm text-on-surface-variant mt-1">
                             Your report enters directly into the municipal emergency dispatch grid. All submissions are monitored in real time.
@@ -117,19 +145,19 @@ export default function CitizenReportPage() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Emergency Category */}
+                        {/* Emergency Category Selector */}
                         <div>
                             <label className="text-xs font-bold text-on-surface block mb-1.5">
                                 Emergency Category
                             </label>
                             <select
                                 value={category}
-                                onChange={(e) => setCategory(e.target.value)}
+                                onChange={(e) => handleCategoryChange(e.target.value)}
                                 className="w-full h-11 px-3 rounded-lg bg-surface-container-low text-on-surface font-semibold text-sm border border-surface-container-high focus:ring-2 focus:ring-primary"
                             >
-                                {categories.map((c) => (
-                                    <option key={c} value={c}>
-                                        {c}
+                                {categoryList.map((c) => (
+                                    <option key={c.code} value={c.code}>
+                                        {c.name} ({c.code})
                                     </option>
                                 ))}
                             </select>
@@ -145,7 +173,7 @@ export default function CitizenReportPage() {
                                 required
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                placeholder="E.g., Rising flood water stranded family on second floor"
+                                placeholder={`E.g., ${activeCatObj.name} emergency incident near our sector`}
                                 className="w-full h-11 px-3 rounded-lg bg-surface-container-low text-on-surface text-sm border border-surface-container-high focus:ring-2 focus:ring-primary"
                             />
                         </div>
@@ -193,17 +221,6 @@ export default function CitizenReportPage() {
                                     </>
                                 )}
                             </div>
-
-                            {routingPreview.detectedKeywords.length > 0 && (
-                                <div className="text-[11px] text-on-surface-variant flex items-center gap-1 flex-wrap">
-                                    <span>Detected situational cues:</span>
-                                    {routingPreview.detectedKeywords.map(kw => (
-                                        <span key={kw} className="px-1.5 py-0.5 rounded bg-surface-container font-mono text-[10px] text-primary">
-                                            "{kw}"
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
                         </div>
 
                         {/* Severity Selector */}
@@ -297,3 +314,4 @@ export default function CitizenReportPage() {
         </div>
     );
 }
+

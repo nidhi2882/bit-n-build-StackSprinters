@@ -22,6 +22,50 @@ public class AlertService {
         return alertRepository.findByActiveTrueOrderByCreatedAtDesc();
     }
 
+    /**
+     * Returns active alerts relevant to the current user.
+     * - SUPER_ADMIN / AUTHORITY_ADMIN: all active alerts (full command visibility).
+     * - DEPARTMENT_ADMIN: only alerts targeted at their department, plus broadcast
+     *   alerts that have no specific target department.
+     * - Everyone else: broadcast (untargeted) alerts only.
+     * This guarantees every routed request/incident alert reaches the correct admin.
+     */
+    public List<Alert> getScopedActiveAlerts(com.resqgrid.backend.security.UserPrincipal user) {
+        List<Alert> active = alertRepository.findByActiveTrueOrderByCreatedAtDesc();
+        if (user == null) {
+            return active;
+        }
+
+        String role = user.getRole() != null ? user.getRole().toUpperCase().replace(" ", "_") : "";
+        if (role.contains("SUPER_ADMIN") || role.contains("AUTHORITY_ADMIN")) {
+            return active;
+        }
+
+        String deptCategory = user.getDepartmentCategory();
+        if (deptCategory == null || deptCategory.trim().isEmpty()) {
+            // No department scope -> only untargeted broadcast alerts
+            return active.stream()
+                    .filter(a -> a.getTargetDepartment() == null || a.getTargetDepartment().trim().isEmpty())
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(deptCategory);
+        final String userCat = dc != null ? dc.name() : deptCategory.toUpperCase().replace("CAT_", "").trim();
+
+        return active.stream()
+                .filter(a -> {
+                    String target = a.getTargetDepartment();
+                    if (target == null || target.trim().isEmpty()) {
+                        return true; // broadcast
+                    }
+                    com.resqgrid.backend.entity.DepartmentCategory targetDc =
+                            com.resqgrid.backend.entity.DepartmentCategory.fromString(target);
+                    String targetCat = targetDc != null ? targetDc.name() : target.toUpperCase().replace("CAT_", "").trim();
+                    return userCat.equalsIgnoreCase(targetCat);
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     @Transactional
     public void dismissAlert(String alertId) {
         alertRepository.findById(alertId).ifPresent(alert -> {

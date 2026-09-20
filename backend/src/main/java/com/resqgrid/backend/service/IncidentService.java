@@ -176,42 +176,60 @@ public class IncidentService {
     }
 
     public List<Incident> getDepartmentScopedIncidents(String catName) {
-        List<Incident> ownCategoryIncidents = incidentRepository.findByCategoryIgnoreCaseOrderByReportedAtDesc(catName);
-        if (ownCategoryIncidents.isEmpty()) {
-            List<String> types = getTypesForCategory(catName);
-            ownCategoryIncidents = incidentRepository.findByTypeIgnoreCaseInOrderByReportedAtDesc(types);
+        if (catName == null || catName.trim().isEmpty()) {
+            return getAllIncidents();
         }
 
-        if (serviceRequestRepository == null) {
-            return ownCategoryIncidents;
+        com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(catName);
+        String cleanCat = dc != null ? dc.name() : catName.toUpperCase().replace("CAT_", "").trim();
+
+        Map<String, Incident> combinedMap = new LinkedHashMap<>();
+
+        // 1. Fetch by category
+        List<Incident> byCat = incidentRepository.findByCategoryIgnoreCaseOrderByReportedAtDesc(cleanCat);
+        for (Incident inc : byCat) {
+            combinedMap.put(inc.getId(), inc);
         }
 
-        // Fetch incidents granted strictly via ACCEPTED ServiceRequests targeting this department
-        List<String> deptVariants = Arrays.asList(catName, "CAT_" + catName);
-        List<com.resqgrid.backend.entity.ServiceRequest> acceptedRequests =
-                serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInAndStatus(deptVariants, "ACCEPTED");
+        // 2. Fetch by type variants
+        List<String> types = getTypesForCategory(cleanCat);
+        List<Incident> byType = incidentRepository.findByTypeIgnoreCaseInOrderByReportedAtDesc(types);
+        for (Incident inc : byType) {
+            combinedMap.put(inc.getId(), inc);
+        }
 
-        Set<String> acceptedIncidentIds = new HashSet<>();
-        for (com.resqgrid.backend.entity.ServiceRequest sr : acceptedRequests) {
-            if (sr.getIncidentId() != null) {
-                acceptedIncidentIds.add(sr.getIncidentId());
+        // 3. Fetch by primary department
+        List<Incident> byDept = incidentRepository.findByPrimaryDepartmentIgnoreCaseOrderByReportedAtDesc(cleanCat);
+        for (Incident inc : byDept) {
+            combinedMap.put(inc.getId(), inc);
+        }
+        List<Incident> byDeptOriginal = incidentRepository.findByPrimaryDepartmentIgnoreCaseOrderByReportedAtDesc(catName);
+        for (Incident inc : byDeptOriginal) {
+            combinedMap.put(inc.getId(), inc);
+        }
+
+        // 4. Accepted ServiceRequests targeting this department
+        if (serviceRequestRepository != null) {
+            List<String> deptVariants = Arrays.asList(catName, cleanCat, "CAT_" + cleanCat);
+            List<com.resqgrid.backend.entity.ServiceRequest> acceptedRequests =
+                    serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInAndStatus(deptVariants, "ACCEPTED");
+
+            Set<String> acceptedIncidentIds = new HashSet<>();
+            for (com.resqgrid.backend.entity.ServiceRequest sr : acceptedRequests) {
+                if (sr.getIncidentId() != null) {
+                    acceptedIncidentIds.add(sr.getIncidentId());
+                }
+            }
+
+            if (!acceptedIncidentIds.isEmpty()) {
+                List<Incident> grantedIncidents = incidentRepository.findAllById(acceptedIncidentIds);
+                for (Incident inc : grantedIncidents) {
+                    combinedMap.put(inc.getId(), inc);
+                }
             }
         }
 
-        if (acceptedIncidentIds.isEmpty()) {
-            return ownCategoryIncidents;
-        }
-
-        Set<String> existingIds = ownCategoryIncidents.stream().map(Incident::getId).collect(Collectors.toSet());
-        List<Incident> grantedIncidents = incidentRepository.findAllById(acceptedIncidentIds);
-
-        List<Incident> result = new ArrayList<>(ownCategoryIncidents);
-        for (Incident inc : grantedIncidents) {
-            if (!existingIds.contains(inc.getId())) {
-                result.add(inc);
-            }
-        }
-
+        List<Incident> result = new ArrayList<>(combinedMap.values());
         result.sort((a, b) -> {
             if (a.getReportedAt() == null || b.getReportedAt() == null) return 0;
             return b.getReportedAt().compareTo(a.getReportedAt());
@@ -468,22 +486,74 @@ public class IncidentService {
             }
         }
 
+        // Keep assigned response units in lock-step with the incident lifecycle so the
+        // flow (Assigned -> En-Route -> On-Scene -> Resolved) is fully dynamic and the
+        // "Resolved" guard above is satisfiable through the normal status buttons.
+        if (!"Resolved".equalsIgnoreCase(status) && !"Cancelled".equalsIgnoreCase(status)) {
+            String resourceStatus = null;
+            if ("En-Route".equalsIgnoreCase(status) || "En Route".equalsIgnoreCase(status)) {
+                resourceStatus = "En-Route";
+            } else if ("On-Scene".equalsIgnoreCase(status) || "On Scene".equalsIgnoreCase(status)
+                    || "Arrived".equalsIgnoreCase(status) || "On-Site".equalsIgnoreCase(status)) {
+                resourceStatus = "On-Scene";
+            } else if ("Assigned".equalsIgnoreCase(status)) {
+                resourceStatus = "En-Route";
+            }
+
+            if (resourceStatus != null) {
+                List<String> assignedIds = incident.getAssignedResourceIds();
+                if (assignedIds != null && !assignedIds.isEmpty()) {
+                    List<Resource> assignedResources = resourceRepository.findAllById(assignedIds);
+                    for (Resource r : assignedResources) {
+                        // Never downgrade a unit that is already On-Scene back to En-Route
+                        String cur = r.getStatus() != null ? r.getStatus().toLowerCase() : "";
+                        boolean alreadyOnScene = cur.contains("scene") || cur.contains("site");
+                        if ("En-Route".equals(resourceStatus) && alreadyOnScene) {
+                            continue;
+                        }
+                        r.setStatus(resourceStatus);
+                        r.setAssignedIncidentId(incidentId);
+                        resourceRepository.save(r);
+                        mongoSyncService.syncResource(r);
+                    }
+                }
+            }
+        }
+
         incident.setStatus(status);
         Incident saved = incidentRepository.save(incident);
         mongoSyncService.syncIncident(saved);
 
         // Activity log for status update
         if (incidentActivityRepository != null) {
+            String statusMsg;
+            if ("Assigned".equalsIgnoreCase(status)) {
+                statusMsg = "Report Marked as Seen & Assigned to Sector Triage Team.";
+            } else if ("En-Route".equalsIgnoreCase(status) || "En Route".equalsIgnoreCase(status)) {
+                statusMsg = "Response Unit is En-Route to your reported GPS location.";
+            } else if ("On-Scene".equalsIgnoreCase(status) || "On Scene".equalsIgnoreCase(status)) {
+                statusMsg = "First Responders arrived On-Scene at your location.";
+            } else if ("Resolved".equalsIgnoreCase(status)) {
+                statusMsg = "Incident Marked as Resolved & Safety Clearance Confirmed.";
+            } else {
+                statusMsg = String.format("Incident status updated to %s", status);
+            }
+
             IncidentActivity activity = IncidentActivity.builder()
                     .incidentId(saved.getId())
-                    .activityText(String.format("Incident status updated to %s", status))
-                    .actor("DEPARTMENT_ADMIN")
+                    .activityText(statusMsg)
+                    .actor("DEPARTMENT_COMMAND")
                     .createdAt(LocalDateTime.now())
                     .build();
             incidentActivityRepository.save(activity);
         }
 
         return saved;
+    }
+
+    public List<IncidentActivity> getIncidentActivities(String incidentId) {
+        if (incidentActivityRepository == null) return Collections.emptyList();
+        return incidentActivityRepository.findByIncidentIdOrderByCreatedAtDesc(incidentId);
     }
 
     @Transactional
@@ -526,7 +596,7 @@ public class IncidentService {
             String unitName = resource.getCallSign() != null ? resource.getCallSign() : resource.getName();
             IncidentActivity activity = IncidentActivity.builder()
                     .incidentId(incidentId)
-                    .activityText(String.format("Response Unit %s (%s) dispatched to scene.", unitName, resource.getType() != null ? resource.getType() : "Emergency Unit"))
+                    .activityText(String.format("Report Marked as Seen & Unit Dispatched: %s (%s) is En-Route to scene.", unitName, resource.getType() != null ? resource.getType() : "Emergency Unit"))
                     .actor("DISPATCHER")
                     .createdAt(LocalDateTime.now())
                     .build();

@@ -1,67 +1,42 @@
 import React, { useState, useEffect } from "react";
 import slaService from "../../services/slaService";
+import { alertService, mapAlertToNotification } from "../../services/alertService";
+
+// Persistent SLA monitor banner shown at the top of the live feed.
+const SLA_MONITOR = {
+    id: "N-SLA-01",
+    type: "sla",
+    title: "SLA Threshold Monitor Active",
+    body: "Monitoring Level-5 Critical (5m SLA) and Level-4 High (15m SLA) dispatch timers across all 9 departments.",
+    time: "Live",
+    cad: "SLA-ENGINE",
+    location: "CAD Core",
+    icon: "timer",
+    unread: false,
+};
 
 export default function NotificationPanel({ onClose }) {
     const [activeTab, setActiveTab] = useState("all");
     const [evaluating, setEvaluating] = useState(false);
     const [slaMetrics, setSlaMetrics] = useState(null);
-    const [notifications, setNotifications] = useState([
-        {
-            id: "N-SLA-01",
-            type: "sla",
-            title: "SLA Threshold Monitor Active",
-            body: "Monitoring Level-5 Critical (5m SLA) and Level-4 High (15m SLA) dispatch timers across all 9 departments.",
-            time: "Live",
-            cad: "SLA-ENGINE",
-            location: "CAD Core",
-            icon: "timer",
-            unread: true,
-        },
-        {
-            id: "N1",
-            type: "critical",
-            title: "Critical Inundation Alert - Vishwamitri",
-            body: "INC-2026-001 water level surging +4.2ft near bridge pier. Evacuation team deployed.",
-            time: "2m ago",
-            cad: "INC-2026-001",
-            location: "Vishwamitri River Bridge",
-            icon: "tsunami",
-            unread: true,
-        },
-        {
-            id: "N2",
-            type: "critical",
-            title: "Structural Chemical Fire Escalation",
-            body: "INC-2026-002 escalated to Level 5. Hazmat foam tender en route from Dandiyabazar.",
-            time: "5m ago",
-            cad: "INC-2026-002",
-            location: "GIDC Nandesari",
-            icon: "local_fire_department",
-            unread: true,
-        },
-        {
-            id: "N3",
-            type: "requests",
-            title: "Mutual Aid Request Received: Pumping Unit",
-            body: "Flood Dept requested heavy dewatering pump from Fire Dept for bridge pier foundation.",
-            time: "14m ago",
-            cad: "INC-2026-001",
-            location: "Sector 04",
-            icon: "swap_horiz",
-            unread: true,
-        },
-        {
-            id: "N4",
-            type: "system",
-            title: "Telemetry SLA Benchmark Normal",
-            body: "Citywide average dispatch time currently 4m 12s, well within 5m target SLA.",
-            time: "25m ago",
-            cad: "SLA-GRID",
-            location: "Central CAD",
-            icon: "monitoring",
-            unread: false,
+    const [notifications, setNotifications] = useState([SLA_MONITOR]);
+
+    // Load real, department-scoped alerts from the backend and keep them live-polled.
+    const loadAlerts = async () => {
+        try {
+            const alerts = await alertService.getActiveAlerts();
+            const mapped = (alerts || []).map(mapAlertToNotification);
+            setNotifications([SLA_MONITOR, ...mapped]);
+        } catch (err) {
+            console.warn("Failed to load live alerts", err);
         }
-    ]);
+    };
+
+    useEffect(() => {
+        loadAlerts();
+        const poll = setInterval(loadAlerts, 12000);
+        return () => clearInterval(poll);
+    }, []);
 
     useEffect(() => {
         slaService.getStatus()
@@ -100,6 +75,10 @@ export default function NotificationPanel({ onClose }) {
 
     const dismiss = (id) => {
         setNotifications(notifications.filter(n => n.id !== id));
+        // Persist dismissal for real backend alerts (skip the local SLA monitor banner).
+        if (id && id !== SLA_MONITOR.id) {
+            alertService.dismissAlert(id).catch(() => {});
+        }
     };
 
     const filtered = notifications.filter(n => {

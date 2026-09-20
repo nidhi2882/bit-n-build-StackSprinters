@@ -2,6 +2,20 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
+// All 9 seeded department-admin logins (must match backend DataInitializer.seedUsers()).
+// Each account carries its own departmentCategory, so it renders only that department's console.
+const DEPARTMENT_LOGINS = [
+    { label: "Flood Admin", email: "flood.admin@resqgrid.gov", password: "floodadmin123", icon: "waves", color: "text-sky-500" },
+    { label: "Fire Admin", email: "fire.admin@resqgrid.gov", password: "fireadmin123", icon: "local_fire_department", color: "text-rose-500" },
+    { label: "Medical Admin", email: "medical.admin@resqgrid.gov", password: "medadmin123", icon: "medical_services", color: "text-emerald-500" },
+    { label: "Crash Admin", email: "crash.admin@resqgrid.gov", password: "crashadmin123", icon: "car_crash", color: "text-amber-500" },
+    { label: "Hazmat Admin", email: "hazmat.admin@resqgrid.gov", password: "hazmatadmin123", icon: "science", color: "text-yellow-500" },
+    { label: "Collapse Admin", email: "collapse.admin@resqgrid.gov", password: "collapseadmin123", icon: "domain_disabled", color: "text-orange-500" },
+    { label: "Cyclone Admin", email: "cyclone.admin@resqgrid.gov", password: "cycloneadmin123", icon: "cyclone", color: "text-purple-500" },
+    { label: "SAR Admin", email: "rescue.admin@resqgrid.gov", password: "rescueadmin123", icon: "travel_explore", color: "text-green-500" },
+    { label: "Police Admin", email: "police.admin@resqgrid.gov", password: "policeadmin123", icon: "local_police", color: "text-blue-500" }
+];
+
 export default function LoginPage() {
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -206,45 +220,40 @@ export default function LoginPage() {
                             {/* Demo Accounts Quick-Select Buttons */}
                             <div className="mt-6 pt-5 border-t border-surface-container-high">
                                 <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold block mb-2 text-center">
-                                    Rapid Test Sign-In Credentials
+                                    Rapid Sign-In • Command & 9 Department Consoles
                                 </span>
+
+                                {/* Command tier */}
+                                <button
+                                    type="button"
+                                    onClick={() => applyCredential("david.chandler@resqgrid.gov", "admin123")}
+                                    className="w-full mb-2 p-2 rounded bg-primary-container/40 hover:bg-primary-container border border-primary/30 text-xs transition-colors text-left"
+                                >
+                                    <div className="font-bold text-primary flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-sm">shield_person</span>
+                                        Super Admin (Command & Control)
+                                    </div>
+                                    <div className="text-[11px] text-on-surface-variant truncate">david.chandler@resqgrid.gov</div>
+                                </button>
+
+                                {/* 9 Department Admins — each renders only its own console */}
                                 <div className="grid grid-cols-2 gap-2 text-left">
-                                    <button
-                                        type="button"
-                                        onClick={() => applyCredential("david.chandler@resqgrid.gov", "admin123")}
-                                        className="p-2 rounded bg-surface-container-low hover:bg-surface-container border border-surface-container-high text-xs transition-colors"
-                                    >
-                                        <div className="font-bold text-primary">Super Admin</div>
-                                        <div className="text-[11px] text-on-surface-variant truncate">david.chandler@resqgrid.gov</div>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => applyCredential("flood.admin@resqgrid.gov", "floodadmin123")}
-                                        className="p-2 rounded bg-surface-container-low hover:bg-surface-container border border-surface-container-high text-xs transition-colors"
-                                    >
-                                        <div className="font-bold text-secondary">Flood Admin</div>
-                                        <div className="text-[11px] text-on-surface-variant truncate">flood.admin@resqgrid.gov</div>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => applyCredential("fire.admin@resqgrid.gov", "fireadmin123")}
-                                        className="p-2 rounded bg-surface-container-low hover:bg-surface-container border border-surface-container-high text-xs transition-colors"
-                                    >
-                                        <div className="font-bold text-error">Fire Admin</div>
-                                        <div className="text-[11px] text-on-surface-variant truncate">fire.admin@resqgrid.gov</div>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => applyCredential("medical.admin@resqgrid.gov", "medadmin123")}
-                                        className="p-2 rounded bg-surface-container-low hover:bg-surface-container border border-surface-container-high text-xs transition-colors"
-                                    >
-                                        <div className="font-bold text-tertiary">Medical Admin</div>
-                                        <div className="text-[11px] text-on-surface-variant truncate">medical.admin@resqgrid.gov</div>
-                                    </button>
+                                    {DEPARTMENT_LOGINS.map((dept) => (
+                                        <button
+                                            key={dept.email}
+                                            type="button"
+                                            onClick={() => applyCredential(dept.email, dept.password)}
+                                            className="p-2 rounded bg-surface-container-low hover:bg-surface-container border border-surface-container-high text-xs transition-colors flex items-center gap-2"
+                                        >
+                                            <span className={`material-symbols-outlined text-base ${dept.color}`}>{dept.icon}</span>
+                                            <span className="flex flex-col overflow-hidden">
+                                                <span className={`font-bold ${dept.color}`}>{dept.label}</span>
+                                                <span className="text-[10px] text-on-surface-variant truncate">{dept.email}</span>
+                                            </span>
+                                        </button>
+                                    ))}
                                 </div>
+
                                 <div className="mt-2 text-center">
                                     <button
                                         type="button"

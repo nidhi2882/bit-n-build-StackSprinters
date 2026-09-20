@@ -185,30 +185,35 @@ export default function CitizenHomePage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {categories.map((c) => (
-                        <Link
-                            key={c.code}
-                            to={`/citizen/report?category=${c.code}`}
-                            className="p-5 rounded-2xl bg-surface-container-lowest border border-surface-container-high shadow-sm hover:shadow-md hover:border-primary/40 transition-all flex items-center justify-between group"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${c.color} transition-transform group-hover:scale-110`}>
-                                    <span className="material-symbols-outlined text-2xl">{c.icon}</span>
+                    {categories.map((c) => {
+                        const isOperator = user?.role === "Department Admin" || user?.role === "DEPARTMENT_ADMIN" || user?.role === "Super Admin" || user?.role === "SUPER_ADMIN" || user?.role === "EMERGENCY_OPERATOR";
+                        const targetPath = isOperator ? `/department/${c.code}` : `/citizen/report?category=${c.code}`;
+
+                        return (
+                            <Link
+                                key={c.code}
+                                to={targetPath}
+                                className="p-5 rounded-2xl bg-surface-container-lowest border border-surface-container-high shadow-sm hover:shadow-md hover:border-primary/40 transition-all flex items-center justify-between group cursor-pointer"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${c.color} transition-transform group-hover:scale-110`}>
+                                        <span className="material-symbols-outlined text-2xl">{c.icon}</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-headline-sm text-base font-bold text-on-surface group-hover:text-primary transition-colors">
+                                            {c.name}
+                                        </h3>
+                                        <span className="text-xs text-on-surface-variant font-code-tabular">
+                                            Dispatch to {c.code}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="font-headline-sm text-base font-bold text-on-surface group-hover:text-primary transition-colors">
-                                        {c.name}
-                                    </h3>
-                                    <span className="text-xs text-on-surface-variant font-code-tabular">
-                                        Dispatch to {c.code}
-                                    </span>
-                                </div>
-                            </div>
-                            <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary group-hover:translate-x-1 transition-all">
-                                arrow_forward
-                            </span>
-                        </Link>
-                    ))}
+                                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary group-hover:translate-x-1 transition-all">
+                                    arrow_forward
+                                </span>
+                            </Link>
+                        );
+                    })}
                 </div>
             </section>
 
