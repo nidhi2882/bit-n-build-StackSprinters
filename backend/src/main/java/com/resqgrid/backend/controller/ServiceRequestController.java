@@ -39,6 +39,11 @@ public class ServiceRequestController {
         return ResponseEntity.ok(serviceRequestService.getIncomingRequests(currentUser));
     }
 
+    @GetMapping("/api/service-requests/sent")
+    public ResponseEntity<List<ServiceRequest>> getSentRequests(@AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(serviceRequestService.getSentRequests(currentUser));
+    }
+
     @GetMapping("/api/incidents/{id}/service-requests")
     public ResponseEntity<List<ServiceRequest>> getRequestsForIncident(@PathVariable String id) {
         return ResponseEntity.ok(serviceRequestService.getRequestsForIncident(id));

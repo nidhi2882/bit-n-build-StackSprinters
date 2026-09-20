@@ -2,129 +2,199 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { EmergencyProvider } from "./context/EmergencyContext";
-import Navbar from "./components/layout/Navbar";
-import Sidebar from "./components/layout/Sidebar";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 
+// Auth Pages
 import LoginPage from "./pages/auth/LoginPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import RegisterPage from "./pages/auth/RegisterPage";
-import CommandCenter from "./pages/CommandCenter";
-import IncidentsPage from "./pages/IncidentsPage";
-import ResourcesPage from "./pages/ResourcesPage";
-import HospitalsPage from "./pages/HospitalsPage";
-import CitizenReportPage from "./pages/CitizenReportPage";
-import AnalyticsPage from "./pages/AnalyticsPage";
-import AdminConsolePage from "./pages/AdminConsolePage";
 
-import OperatorDashboard from "./pages/dashboards/OperatorDashboard";
-import ResponseTeamDashboard from "./pages/dashboards/ResponseTeamDashboard";
-import HospitalDashboard from "./pages/dashboards/HospitalDashboard";
-import AuthorityDashboard from "./pages/dashboards/AuthorityDashboard";
+// Dashboards
 import SuperAdminDashboard from "./pages/dashboards/SuperAdminDashboard";
 import DepartmentAdminDashboard from "./pages/dashboards/DepartmentAdminDashboard";
 
-function MainDashboard() {
+// Super Admin Pages
+import UserManagementPage from "./pages/admin/UserManagementPage";
+import UnitResourceRegistryPage from "./pages/admin/UnitResourceRegistryPage";
+import GlobalServiceRequestsPage from "./pages/admin/GlobalServiceRequestsPage";
+import SuperAdminAnalyticsPage from "./pages/admin/SuperAdminAnalyticsPage";
+import AuditLogPage from "./pages/admin/AuditLogPage";
+
+// Department Admin Pages
+import CrossDeptRequestsPage from "./pages/department/CrossDeptRequestsPage";
+import UnitRosterPage from "./pages/department/UnitRosterPage";
+import DepartmentAnalyticsPage from "./pages/department/DepartmentAnalyticsPage";
+
+// Citizen Pages
+import CitizenHomePage from "./pages/citizen/CitizenHomePage";
+import CitizenReportPage from "./pages/citizen/CitizenReportPage";
+import SosConfirmationPage from "./pages/citizen/SosConfirmationPage";
+import CitizenReportStatusPage from "./pages/citizen/CitizenReportStatusPage";
+
+// Other Existing Pages (preserved)
+import IncidentsPage from "./pages/IncidentsPage";
+import ResourcesPage from "./pages/ResourcesPage";
+import HospitalsPage from "./pages/HospitalsPage";
+
+function DynamicRootDashboard() {
     const { user } = useAuth();
-    const role = user?.role || "Emergency Operator";
+    const role = (user?.role || "").toUpperCase().replace(" ", "_");
 
-    switch (role) {
-        case "Super Admin":
-            return <SuperAdminDashboard />;
-        case "Department Admin":
-            return <DepartmentAdminDashboard />;
-        case "Response Team":
-            return <ResponseTeamDashboard />;
-        case "Hospital Admin":
-            return <HospitalDashboard />;
-        case "Authority Admin":
-            return <AuthorityDashboard />;
-        case "Citizen":
-            return <CitizenReportPage />;
-        case "Emergency Operator":
-        default:
-            return <OperatorDashboard />;
+    if (role === "SUPER_ADMIN" || role === "ROLE_SUPER_ADMIN" || role === "AUTHORITY_ADMIN") {
+        return <SuperAdminDashboard />;
     }
-}
+    if (role === "DEPARTMENT_ADMIN" || role === "ROLE_DEPARTMENT_ADMIN" || role === "EMERGENCY_OPERATOR") {
+        return <DepartmentAdminDashboard />;
+    }
+    if (role === "CITIZEN" || role === "ROLE_CITIZEN") {
+        return <CitizenHomePage />;
+    }
 
-function AppLayout() {
-    return (
-        <div className="app-layout">
-            <Navbar />
-            <div className="app-main-body">
-                <Sidebar />
-                <main className="app-content">
-                    <Routes>
-                        {/* Primary Dynamic Role Dashboard */}
-                        <Route path="/" element={<MainDashboard />} />
-                        
-                        {/* Dedicated Role Dashboard Views */}
-                        <Route path="/operator-dashboard" element={
-                            <ProtectedRoute allowedRoles={["Emergency Operator", "Authority Admin", "Super Admin"]}>
-                                <OperatorDashboard />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/response-dashboard" element={
-                            <ProtectedRoute allowedRoles={["Response Team", "Authority Admin", "Emergency Operator", "Super Admin"]}>
-                                <ResponseTeamDashboard />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/hospital-dashboard" element={
-                            <ProtectedRoute allowedRoles={["Hospital Admin", "Authority Admin", "Emergency Operator", "Super Admin"]}>
-                                <HospitalDashboard />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/authority-dashboard" element={
-                            <ProtectedRoute allowedRoles={["Authority Admin", "Emergency Operator", "Super Admin"]}>
-                                <AuthorityDashboard />
-                            </ProtectedRoute>
-                        } />
-
-                        {/* Network Views */}
-                        <Route path="/incidents" element={<IncidentsPage />} />
-                        <Route path="/resources" element={
-                            <ProtectedRoute allowedRoles={["Response Team", "Emergency Operator", "Authority Admin", "Hospital Admin", "Super Admin"]}>
-                                <ResourcesPage />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/hospitals" element={<HospitalsPage />} />
-                        <Route path="/report" element={<CitizenReportPage />} />
-                        <Route path="/analytics" element={
-                            <ProtectedRoute allowedRoles={["Authority Admin", "Emergency Operator", "Super Admin"]}>
-                                <AnalyticsPage />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/admin" element={
-                            <ProtectedRoute allowedRoles={["Authority Admin", "Emergency Operator", "Super Admin"]}>
-                                <AdminConsolePage />
-                            </ProtectedRoute>
-                        } />
-
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                </main>
-            </div>
-        </div>
-    );
+    // Default fallback to Super Admin or Department Admin
+    return <DepartmentAdminDashboard />;
 }
 
 function AppContent() {
     return (
         <Routes>
-            {/* Standalone Auth Routes (Full-screen, No Navbar/Sidebar) */}
+            {/* Standalone Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* Application Routes with Main Shell Layout */}
-            <Route path="/*" element={
-                <ProtectedRoute>
-                    <AppLayout />
-                </ProtectedRoute>
-            } />
+            {/* Main Application Root */}
+            <Route
+                path="/"
+                element={
+                    <ProtectedRoute>
+                        <DynamicRootDashboard />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Super Admin Tactical Console */}
+            <Route
+                path="/super-admin"
+                element={
+                    <ProtectedRoute>
+                        <SuperAdminDashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/users"
+                element={
+                    <ProtectedRoute>
+                        <UserManagementPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/resources"
+                element={
+                    <ProtectedRoute>
+                        <UnitResourceRegistryPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/service-requests"
+                element={
+                    <ProtectedRoute>
+                        <GlobalServiceRequestsPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/audit-log"
+                element={
+                    <ProtectedRoute>
+                        <AuditLogPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/analytics"
+                element={
+                    <ProtectedRoute>
+                        <SuperAdminAnalyticsPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Department Admin Sub-Pages */}
+            <Route
+                path="/department/cross-dept-requests"
+                element={
+                    <ProtectedRoute>
+                        <CrossDeptRequestsPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/department/unit-roster"
+                element={
+                    <ProtectedRoute>
+                        <UnitRosterPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/department/analytics"
+                element={
+                    <ProtectedRoute>
+                        <DepartmentAnalyticsPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Citizen Portal Routes */}
+            <Route
+                path="/citizen/home"
+                element={
+                    <ProtectedRoute>
+                        <CitizenHomePage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route path="/citizen/report" element={<CitizenReportPage />} />
+            <Route path="/citizen/sos-confirmation" element={<SosConfirmationPage />} />
+            <Route path="/citizen/status/:id" element={<CitizenReportStatusPage />} />
+
+            {/* Direct & Backward Compatibility Routes */}
+            <Route path="/report" element={<CitizenReportPage />} />
+            <Route
+                path="/incidents"
+                element={
+                    <ProtectedRoute>
+                        <DynamicRootDashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/resources"
+                element={
+                    <ProtectedRoute>
+                        <UnitResourceRegistryPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/hospitals"
+                element={
+                    <ProtectedRoute>
+                        <HospitalsPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Wildcard */}
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 }
 
-function App() {
+export default function App() {
     return (
         <AuthProvider>
             <EmergencyProvider>
@@ -135,5 +205,3 @@ function App() {
         </AuthProvider>
     );
 }
-
-export default App;

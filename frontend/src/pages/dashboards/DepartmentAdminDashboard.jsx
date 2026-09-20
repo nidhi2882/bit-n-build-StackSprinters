@@ -1,770 +1,415 @@
 import React, { useState, useEffect } from "react";
-import { Flame, Waves, Stethoscope, ShieldAlert, ArrowRightLeft, AlertTriangle, Users, CheckCircle2, Clock, Filter, MapPin, Share2, Check, X, ShieldCheck, RefreshCw } from "lucide-react";
-import { useEmergency } from "../../context/EmergencyContext";
 import { useAuth } from "../../context/AuthContext";
-import { apiClient } from "../../services/api";
+import { incidentService } from "../../services/incidentService";
+import { resourceService } from "../../services/resourceService";
+import { serviceRequestService } from "../../services/serviceRequestService";
+import TacticalHeader from "../../components/layout/TacticalHeader";
+import TacticalSidebar from "../../components/layout/TacticalSidebar";
+import IncidentDetailDrawer from "../../components/incidents/IncidentDetailDrawer";
+import NewServiceRequestModal from "../../components/modals/NewServiceRequestModal";
+import { SectorAllClearEmptyState } from "../../components/common/SystemStateFallbacks";
 
-function DepartmentAdminDashboard() {
-    const { incidents, resources, alerts, dismissAlert, updateIncidentStatus, assignResource } = useEmergency();
+const DEPT_CONFIGS = {
+    FLOOD: {
+        title: "Flood & Water Infrastructure Department Console",
+        subtitle: "Tactical Command Sector 4 • NDRF Water Rescue Command",
+        sectorCode: "CAD-S4",
+        icon: "waves",
+        primaryColor: "#0284c7",
+        badgeBg: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+        bannerBg: "from-sky-950 via-slate-900 to-slate-950",
+        activeAlert: "Active Storm Surge Phase 2 • High Inundation Risk",
+        unitCategory: "Water Rescue & Heavy Submersibles"
+    },
+    FIRE: {
+        title: "Fire Suppression & Heavy Rescue Console",
+        subtitle: "Vadodara Fire Department • Industrial & Structural Command",
+        sectorCode: "CAD-FIRE",
+        icon: "local_fire_department",
+        primaryColor: "#dc2626",
+        badgeBg: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+        bannerBg: "from-rose-950 via-slate-900 to-slate-950",
+        activeAlert: "Structural Chemical Fire Phase 4 • Hazmat Units On Standby",
+        unitCategory: "Fire Tenders, Foam Rigs & Ladders"
+    },
+    MEDICAL: {
+        title: "Emergency Medical & Trauma EMS Console",
+        subtitle: "SSG Hospital Trauma Emergency Center • Mass Casualty Command",
+        sectorCode: "CAD-MED",
+        icon: "medical_services",
+        primaryColor: "#059669",
+        badgeBg: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+        bannerBg: "from-emerald-950 via-slate-900 to-slate-950",
+        activeAlert: "Mass Casualty Protocol Level 2 Active • Triage Bay Open",
+        unitCategory: "Advanced Life Support & Trauma Teams"
+    },
+    CRASH: {
+        title: "Highway Crash & Vehicle Extrication Console",
+        subtitle: "Highway Patrol Corridor • Multi-Vehicle Pileup Division",
+        sectorCode: "CAD-CRASH",
+        icon: "car_crash",
+        primaryColor: "#d97706",
+        badgeBg: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+        bannerBg: "from-amber-950 via-slate-900 to-slate-950",
+        activeAlert: "Expressway Traffic Diversion Active • Heavy Tow Deployed",
+        unitCategory: "Hydraulic Cutters & Heavy Tow Cranes"
+    },
+    HAZMAT: {
+        title: "Industrial Hazmat & CBRN Containment Console",
+        subtitle: "GIDC Industrial Hazmat Division • Toxic Vapor Mitigation",
+        sectorCode: "CAD-HAZ",
+        icon: "science",
+        primaryColor: "#ca8a04",
+        badgeBg: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+        bannerBg: "from-yellow-950 via-slate-900 to-slate-950",
+        activeAlert: "Level-A Chemical Threat Active • 800m Perimeter Enforced",
+        unitCategory: "Level-A Suits & Decontamination Rigs"
+    },
+    COLLAPSE: {
+        title: "Urban Search & Heavy Structural Collapse Console",
+        subtitle: "USAR Structural Wing • Void Entrapment Operations",
+        sectorCode: "CAD-USAR",
+        icon: "domain_disabled",
+        primaryColor: "#ea580c",
+        badgeBg: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+        bannerBg: "from-stone-900 via-orange-950 to-slate-950",
+        activeAlert: "Underground Structural Failure • Seismic Void Sensors Active",
+        unitCategory: "Concrete Breakers, Cranes & USAR K9"
+    },
+    CYCLONE: {
+        title: "Severe Cyclone & Storm Emergency Console",
+        subtitle: "Coastal Weather Disaster Unit • Gale Force Debris Clearance",
+        sectorCode: "CAD-CYC",
+        icon: "cyclone",
+        primaryColor: "#7c3aed",
+        badgeBg: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+        bannerBg: "from-indigo-950 via-purple-950 to-slate-950",
+        activeAlert: "Category 3 Cyclone Influx • Downed Live Line Protocols",
+        unitCategory: "Mobile Gensets, Tree Clearers & Utility"
+    },
+    SEARCH_RESCUE: {
+        title: "Wilderness & Thermal Drone SAR Console",
+        subtitle: "Mountain & Wilderness Search Command • K9 SAR Unit",
+        sectorCode: "CAD-SAR",
+        icon: "travel_explore",
+        primaryColor: "#16a34a",
+        badgeBg: "bg-green-500/15 text-green-400 border-green-500/30",
+        bannerBg: "from-green-950 via-slate-900 to-slate-950",
+        activeAlert: "Night Ridge Search Active • Thermal Aerial Drones Deployed",
+        unitCategory: "Night Vision, Thermal Drones & K9 Trackers"
+    },
+    POLICE: {
+        title: "Metropolitan Police Tactical Command Console",
+        subtitle: "City Police Headquarters • Civil Protection & Patrol",
+        sectorCode: "CAD-POLICE",
+        icon: "local_police",
+        primaryColor: "#2563eb",
+        badgeBg: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+        bannerBg: "from-blue-950 via-slate-900 to-slate-950",
+        activeAlert: "Substation Security Perimeter Active • Barricades Deployed",
+        unitCategory: "Crowd Control, Traffic & Tactical Squads"
+    }
+};
+
+export default function DepartmentAdminDashboard({ categoryOverride = null }) {
     const { user } = useAuth();
+    const rawCategory = categoryOverride || user?.departmentCategory || "FLOOD";
+    const categoryKey = rawCategory.toUpperCase().replace("CAT_", "");
+    const config = DEPT_CONFIGS[categoryKey] || DEPT_CONFIGS.FLOOD;
 
-    const userDeptCat = user?.departmentCategory || "CAT_FIRE";
-    const [selectedDeptCategory, setSelectedDeptCategory] = useState(userDeptCat);
-    const [reclassifyIncidentId, setReclassifyIncidentId] = useState(null);
-    const [targetCategory, setTargetCategory] = useState("CAT_FLOOD");
-
-    // Scoped alerts targeting current selected department
-    const deptAlerts = alerts.filter(a => {
-        if (!a.targetDepartment) return true;
-        const targetUpper = a.targetDepartment.toUpperCase();
-        const currentUpper = selectedDeptCategory.toUpperCase();
-        const targetClean = targetUpper.replace("CAT_", "");
-        const currentClean = currentUpper.replace("CAT_", "");
-        return targetUpper === currentUpper || 
-               targetClean.includes(currentClean) || 
-               currentClean.includes(targetClean) ||
-               (currentClean.startsWith("MED") && targetClean.startsWith("MED")) ||
-               (currentClean.startsWith("SEC") && (targetClean.startsWith("POL") || targetClean.startsWith("SEC")));
-    });
-
-    // Cross-Department Requests State
+    const [incidents, setIncidents] = useState([]);
+    const [units, setUnits] = useState([]);
     const [incomingRequests, setIncomingRequests] = useState([]);
-    const [loadingRequests, setLoadingRequests] = useState(false);
-    const [acceptingReqId, setAcceptingReqId] = useState(null);
-    const [selectedUnitId, setSelectedUnitId] = useState("");
-    const [decliningReqId, setDecliningReqId] = useState(null);
-    const [declineReason, setDeclineReason] = useState("");
-    const [activeSection, setActiveSection] = useState("incidents"); // "incidents" | "requests"
+    const [selectedIncident, setSelectedIncident] = useState(null);
+    const [mutualAidIncident, setMutualAidIncident] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // Dept Metadata
-    const deptConfig = {
-        "CAT_FIRE": { name: "Fire & Rescue Department", icon: "🔥", color: "#ef4444", types: ["FIRE", "Explosion", "Smoke"] },
-        "CAT_FLOOD": { name: "Flood & Water Rescue Command", icon: "🌊", color: "#3b82f6", types: ["FLOOD", "Flood", "Drowning", "Water Logging"] },
-        "CAT_MED": { name: "Medical Emergency & Trauma Center", icon: "🚑", color: "#10b981", types: ["MEDICAL", "Medical", "Accident", "Trauma"] },
-        "CAT_SECURITY": { name: "Police & Public Safety Admin", icon: "🛡️", color: "#f97316", types: ["POLICE", "Security", "Riot", "Theft"] }
-    };
-
-    const currentDept = deptConfig[selectedDeptCategory] || deptConfig["CAT_FIRE"];
-
-    // Fetch incoming service requests for logged in dept admin
-    const fetchIncomingRequests = async () => {
-        setLoadingRequests(true);
+    const loadData = async () => {
+        setLoading(true);
         try {
-            const res = await apiClient.get("/service-requests/incoming");
-            if (res.data) {
-                setIncomingRequests(res.data);
-            }
+            const [incData, unitData, incomingData] = await Promise.all([
+                incidentService.getIncidents(),
+                resourceService.getResources(categoryKey),
+                serviceRequestService.getIncomingRequests(),
+            ]);
+            setIncidents(incData || []);
+            setUnits(unitData || []);
+            setIncomingRequests(incomingData || []);
         } catch (err) {
-            console.error("Failed to fetch incoming service requests:", err);
+            console.error("Failed to load department telemetry", err);
         } finally {
-            setLoadingRequests(false);
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchIncomingRequests();
-        const interval = setInterval(fetchIncomingRequests, 15000); // Polling every 15s
+        loadData();
+        const interval = setInterval(loadData, 15000);
         return () => clearInterval(interval);
-    }, [selectedDeptCategory]);
+    }, [categoryKey]);
 
-    // Category Scoped Incidents
-    const categoryIncidents = incidents.filter(i => {
-        const typeUpper = (i.type || "").toUpperCase();
-        return currentDept.types.some(t => typeUpper.includes(t.toUpperCase())) || typeUpper.includes(selectedDeptCategory.replace("CAT_", ""));
-    });
-
-    const unassignedIncidents = categoryIncidents.filter(i => i.status === "Reported" || i.assignedResourceIds.length === 0);
-    const assignedIncidents = categoryIncidents.filter(i => i.assignedResourceIds.length > 0 && i.status !== "Resolved");
-
-    // Category Scoped Team Roster
-    const departmentUnits = resources.filter(r => {
-        const rType = (r.type || "").toLowerCase();
-        const keyword = selectedDeptCategory.replace("CAT_", "").toLowerCase();
-        return rType.includes(keyword) || (keyword === "fire" && rType.includes("fire")) || (keyword === "flood" && (rType.includes("water") || rType.includes("rescue"))) || (keyword === "med" && rType.includes("ambul"));
-    });
-
-    const pendingRequestsCount = incomingRequests.filter(r => r.status === "PENDING").length;
-
-    const handleReclassifySubmit = async (incidentId) => {
-        try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:8080/api/incidents/${incidentId}/reclassify`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ newCategory: targetCategory })
-            });
-
-            if (response.ok) {
-                alert(`Incident ${incidentId} successfully reclassified and rerouted to ${targetCategory} department!`);
-                setReclassifyIncidentId(null);
-                window.location.reload();
-            } else {
-                alert("Failed to reclassify incident.");
-            }
-        } catch (err) {
-            console.error("Reclassify error:", err);
-            alert("Error connecting to server for reclassification.");
-        }
-    };
-
-    const handleEscalate = async (incidentId) => {
-        try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:8080/api/incidents/${incidentId}/escalate`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                alert(`Incident ${incidentId} escalated to Level 5 Critical Priority and Super Admin notified!`);
-                window.location.reload();
-            }
-        } catch (err) {
-            console.error("Escalate error:", err);
-        }
-    };
-
-    const handleAcceptRequest = async (reqId) => {
-        try {
-            const token = localStorage.getItem("token");
-            const selectedUnit = departmentUnits.find(u => String(u.id) === String(selectedUnitId));
-            const response = await fetch(`http://localhost:8080/api/service-requests/${reqId}/accept`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    unitId: selectedUnitId || null,
-                    assignedUnitName: selectedUnit ? selectedUnit.name : null
-                })
-            });
-
-            if (response.ok) {
-                alert("Service request accepted! Full incident access has been unlocked for your department.");
-                setAcceptingReqId(null);
-                setSelectedUnitId("");
-                fetchIncomingRequests();
-                window.location.reload();
-            } else {
-                alert("Failed to accept service request.");
-            }
-        } catch (err) {
-            console.error("Accept request error:", err);
-        }
-    };
-
-    const handleDeclineRequest = async (reqId) => {
-        try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:8080/api/service-requests/${reqId}/decline`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    reason: declineReason || "Resource unavailable at this moment"
-                })
-            });
-
-            if (response.ok) {
-                alert("Service request declined.");
-                setDecliningReqId(null);
-                setDeclineReason("");
-                fetchIncomingRequests();
-            } else {
-                alert("Failed to decline service request.");
-            }
-        } catch (err) {
-            console.error("Decline request error:", err);
-        }
-    };
-
-    const handleResolveRequest = async (reqId) => {
-        try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:8080/api/service-requests/${reqId}/resolve`, {
-                method: "PATCH",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                alert("Service request marked as resolved.");
-                fetchIncomingRequests();
-            }
-        } catch (err) {
-            console.error("Resolve request error:", err);
-        }
-    };
+    const activeIncidents = incidents.filter(i => i.status !== "Resolved");
+    const deployedUnits = units.filter(u => u.status !== "Available");
+    const availableUnits = units.filter(u => u.status === "Available");
 
     return (
-        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Department Admin Header */}
-            <div className="card" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', borderColor: currentDept.color, padding: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        <div style={{ background: currentDept.color, color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '1.6rem' }}>
-                            {currentDept.icon}
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '0.75rem', color: '#93c5fd', fontWeight: 800, textTransform: 'uppercase' }}>
-                                DEPARTMENT ADMIN COMMAND CONSOLE
-                            </div>
-                            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-                                {user?.name || currentDept.name}
-                            </h1>
-                            <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
-                                Department Category Scope: <strong style={{ color: currentDept.color }}>{selectedDeptCategory}</strong>
-                            </div>
-                        </div>
-                    </div>
+        <div className="bg-background font-body-md text-on-surface antialiased min-h-screen">
+            <TacticalSidebar />
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0b1120', padding: '6px 12px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                        <Filter size={14} color="#60a5fa" />
-                        <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 700 }}>Switch Dept View:</span>
-                        <select
-                            value={selectedDeptCategory}
-                            onChange={(e) => setSelectedDeptCategory(e.target.value)}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '0.82rem', outline: 'none', cursor: 'pointer' }}
+            <div className="pl-64">
+                <TacticalHeader
+                    activeIncidentCount={activeIncidents.length}
+                    onOpenDispatchModal={() => setSelectedIncident(incidents[0] || null)}
+                />
+
+                <main className="w-full pt-16 min-h-screen px-space-lg py-space-lg">
+                    <div className="flex flex-col w-full gap-space-lg max-w-[1920px] mx-auto">
+                        {/* 1. Department Top Banner */}
+                        <div
+                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${config.bannerBg} p-space-lg shadow-md border border-surface-container-high text-on-surface`}
                         >
-                            <option value="CAT_FIRE">🔥 Fire & Rescue Admin</option>
-                            <option value="CAT_FLOOD">🌊 Flood & Disaster Admin</option>
-                            <option value="CAT_MED">🚑 Medical & Trauma Admin</option>
-                            <option value="CAT_SECURITY">🛡️ Police & Safety Admin</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            {/* Targeted Department Alerts Notification Panel */}
-            {deptAlerts.length > 0 && (
-                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(15, 23, 42, 0.9) 100%)', borderColor: '#eab308', padding: '16px' }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fef08a', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ShieldAlert size={18} color="#eab308" />
-                            <span>Department Action Notifications & Live Alerts ({deptAlerts.length})</span>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {deptAlerts.slice(0, 3).map(alt => (
-                            <div key={alt.id} style={{ background: '#0b1120', border: '1px solid #1e293b', padding: '10px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        background: alt.type === 'SERVICE_REQUEST' ? 'rgba(168,85,247,0.2)' : 'rgba(239,68,68,0.2)',
-                                        color: alt.type === 'SERVICE_REQUEST' ? '#c084fc' : '#fca5a5'
-                                    }}>
-                                        {alt.type || "ALERT"}
-                                    </span>
-                                    <div>
-                                        <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.85rem' }}>{alt.title}</div>
-                                        <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>{alt.message}</div>
+                            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+                                <div className="flex items-start sm:items-center gap-space-md">
+                                    <div className="w-14 h-14 rounded-2xl bg-surface-container-highest/20 backdrop-blur-md flex items-center justify-center shadow-md shrink-0 border border-white/10">
+                                        <span className="material-symbols-outlined text-4xl text-primary-fixed">
+                                            {config.icon}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-space-xs flex-wrap">
+                                            <h1 className="font-headline-lg text-headline-lg font-bold text-white tracking-tight">
+                                                {config.title}
+                                            </h1>
+                                            <span className="px-2 py-0.5 rounded bg-white/10 text-white font-code-tabular text-xs font-semibold uppercase">
+                                                {config.sectorCode}
+                                            </span>
+                                        </div>
+                                        <p className="font-body-md text-body-md text-slate-300 flex items-center gap-2 mt-1 flex-wrap">
+                                            <span>{config.subtitle}</span>
+                                            <span>•</span>
+                                            <span className="font-semibold text-error">{config.activeAlert}</span>
+                                            <span>•</span>
+                                            <span className="font-code-tabular font-medium text-secondary">
+                                                {units.length} Fleet Units
+                                            </span>
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {alt.type === 'SERVICE_REQUEST' && (
-                                        <button
-                                            onClick={() => setActiveSection("requests")}
-                                            style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' }}
-                                        >
-                                            View Inbox
-                                        </button>
-                                    )}
+                                <div className="flex items-center gap-space-sm shrink-0 flex-wrap">
                                     <button
-                                        onClick={() => dismissAlert(alt.id)}
-                                        style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                                        onClick={() => setMutualAidIncident(incidents[0] || { id: "INC-SECTOR", title: `${categoryKey} Sector Operation` })}
+                                        className="inline-flex items-center gap-space-xs px-space-md py-2 rounded-xl bg-secondary-container hover:bg-secondary text-on-secondary-container hover:text-on-secondary font-label-md text-label-md font-bold shadow-md transition-all"
                                     >
-                                        <X size={14} />
+                                        <span className="material-symbols-outlined text-base">handshake</span>
+                                        <span>Request Mutual Aid</span>
+                                    </button>
+                                    <button
+                                        onClick={loadData}
+                                        className="inline-flex items-center gap-space-xs px-space-md py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-label-md text-label-md font-bold shadow-sm transition-all"
+                                    >
+                                        <span className="material-symbols-outlined text-base">refresh</span>
+                                        <span>Refresh Sector</span>
                                     </button>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Department Summary Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-                <div className="card" style={{ padding: '16px', background: '#0f172a' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>UNASSIGNED INCIDENTS</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ef4444', marginTop: '6px' }}>
-                        {unassignedIncidents.length}
-                    </div>
-                </div>
-
-                <div className="card" style={{ padding: '16px', background: '#0f172a' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>ACTIVE DEPLOYMENTS</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#3b82f6', marginTop: '6px' }}>
-                        {assignedIncidents.length}
-                    </div>
-                </div>
-
-                <div className="card" style={{ padding: '16px', background: '#0f172a', borderLeft: pendingRequestsCount > 0 ? '4px solid #a855f7' : 'none' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Share2 size={14} />
-                        <span>CROSS-DEPT REQUESTS INBOX</span>
-                    </div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#a855f7', marginTop: '6px' }}>
-                        {pendingRequestsCount} <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 400 }}>Pending</span>
-                    </div>
-                </div>
-
-                <div className="card" style={{ padding: '16px', background: '#0f172a' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>DEPARTMENT SQUAD UNITS</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#10b981', marginTop: '6px' }}>
-                        {departmentUnits.length}
-                    </div>
-                </div>
-            </div>
-
-            {/* View Switcher Tabs */}
-            <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #1e293b', paddingBottom: '10px' }}>
-                <button
-                    onClick={() => setActiveSection("incidents")}
-                    style={{
-                        padding: '10px 18px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: activeSection === "incidents" ? '#3b82f6' : '#1e293b',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: '0.88rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                    }}
-                >
-                    <Flame size={16} />
-                    <span>Primary Dept Incidents ({unassignedIncidents.length})</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveSection("requests")}
-                    style={{
-                        padding: '10px 18px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: activeSection === "requests" ? '#a855f7' : '#1e293b',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: '0.88rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                    }}
-                >
-                    <Share2 size={16} />
-                    <span>Cross-Dept Support Requests Inbox ({incomingRequests.length})</span>
-                    {pendingRequestsCount > 0 && (
-                        <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px' }}>
-                            {pendingRequestsCount} NEW
-                        </span>
-                    )}
-                </button>
-            </div>
-
-            {/* SECTION 1: Primary Department Incidents & Team Roster */}
-            {activeSection === "incidents" && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '20px' }}>
-                    {/* Unassigned Incidents & Reclassify Queue */}
-                    <div className="card" style={{ padding: '20px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>Unassigned Incidents Queue ({unassignedIncidents.length})</span>
-                            <span style={{ fontSize: '0.72rem', color: '#a5b4fc' }}>Category Scoped ONLY</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {unassignedIncidents.length > 0 ? (
-                                unassignedIncidents.map(inc => (
-                                    <div key={inc.id} style={{ background: '#0b1120', border: '1px solid #1e293b', padding: '14px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <span className={`severity-badge severity-${inc.severity}`}>
-                                                Level {inc.severity} Priority
-                                            </span>
-                                            <span style={{ fontSize: '0.75rem', color: '#60a5fa', fontWeight: 700 }}>{inc.id}</span>
-                                        </div>
-
-                                        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', margin: 0 }}>{inc.title}</h3>
-                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MapPin size={13} />
-                                            <span>{inc.locationName}</span>
-                                        </div>
-
-                                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                            <button
-                                                onClick={() => setReclassifyIncidentId(inc.id)}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: '1px solid #f59e0b',
-                                                    color: '#f59e0b',
-                                                    padding: '6px 12px',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.78rem',
-                                                    fontWeight: 700,
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px'
-                                                }}
-                                            >
-                                                <ArrowRightLeft size={13} />
-                                                <span>Reclassify / Reject Misroute</span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => handleEscalate(inc.id)}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: '1px solid #ef4444',
-                                                    color: '#ef4444',
-                                                    padding: '6px 12px',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.78rem',
-                                                    fontWeight: 700,
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px'
-                                                }}
-                                            >
-                                                <AlertTriangle size={13} />
-                                                <span>Escalate to Critical</span>
-                                            </button>
-                                        </div>
-
-                                        {/* Reclassify Modal Inline */}
-                                        {reclassifyIncidentId === inc.id && (
-                                            <div style={{ background: '#1e293b', padding: '12px', borderRadius: '8px', marginTop: '8px', border: '1px solid #f59e0b' }}>
-                                                <div style={{ fontSize: '0.78rem', color: '#fff', fontWeight: 700, marginBottom: '6px' }}>
-                                                    Select Correct Department to Reroute Incident:
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <select
-                                                        value={targetCategory}
-                                                        onChange={e => setTargetCategory(e.target.value)}
-                                                        style={{ flex: 1, padding: '6px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff' }}
-                                                    >
-                                                        <option value="CAT_FLOOD">🌊 Flood Department</option>
-                                                        <option value="CAT_FIRE">🔥 Fire Department</option>
-                                                        <option value="CAT_MED">🚑 Medical / Hospital</option>
-                                                        <option value="CAT_SECURITY">🛡️ Police & Safety</option>
-                                                    </select>
-                                                    <button
-                                                        onClick={() => handleReclassifySubmit(inc.id)}
-                                                        style={{ padding: '6px 12px', background: '#f59e0b', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 800, cursor: 'pointer' }}
-                                                    >
-                                                        Reroute
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            ) : (
-                                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
-                                    No unassigned incidents currently in {currentDept.name} queue.
+                        {/* 2. Departmental KPI Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-space-md">
+                            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+                                        Sector Incidents
+                                    </span>
+                                    <span className="material-symbols-outlined text-primary text-xl">emergency</span>
                                 </div>
-                            )}
-                        </div>
-                    </div>
+                                <div className="my-space-xs">
+                                    <span className="font-display-lg text-3xl font-bold font-code-tabular text-on-surface">
+                                        {activeIncidents.length}
+                                    </span>
+                                </div>
+                                <span className="font-label-xs text-xs text-on-surface-variant pt-2 border-t border-surface-container-high">
+                                    Jurisdictional Jurisdiction
+                                </span>
+                            </div>
 
-                    {/* Department Team Roster */}
-                    <div className="card" style={{ padding: '20px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Users size={18} color="#10b981" />
-                            <span>Department Team Roster & Readiness</span>
+                            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+                                        Units Deployed
+                                    </span>
+                                    <span className="material-symbols-outlined text-error text-xl">fmd_good</span>
+                                </div>
+                                <div className="my-space-xs">
+                                    <span className="font-display-lg text-3xl font-bold font-code-tabular text-error">
+                                        {deployedUnits.length}
+                                    </span>
+                                </div>
+                                <span className="font-label-xs text-xs text-on-surface-variant pt-2 border-t border-surface-container-high">
+                                    En-Route & On-Scene
+                                </span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+                                        Units Standby
+                                    </span>
+                                    <span className="material-symbols-outlined text-secondary text-xl">check_circle</span>
+                                </div>
+                                <div className="my-space-xs">
+                                    <span className="font-display-lg text-3xl font-bold font-code-tabular text-secondary">
+                                        {availableUnits.length}
+                                    </span>
+                                </div>
+                                <span className="font-label-xs text-xs text-secondary font-semibold pt-2 border-t border-surface-container-high">
+                                    Available for Tasking
+                                </span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+                                        Incoming Requests
+                                    </span>
+                                    <span className="material-symbols-outlined text-tertiary text-xl">swap_horiz</span>
+                                </div>
+                                <div className="my-space-xs">
+                                    <span className="font-display-lg text-3xl font-bold font-code-tabular text-tertiary">
+                                        {incomingRequests.filter(r => r.status === "PENDING").length}
+                                    </span>
+                                </div>
+                                <span className="font-label-xs text-xs text-tertiary font-semibold pt-2 border-t border-surface-container-high">
+                                    Requires Agency Action
+                                </span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+                                        Sector SLA Turnaround
+                                    </span>
+                                    <span className="material-symbols-outlined text-secondary text-xl">timer</span>
+                                </div>
+                                <div className="my-space-xs">
+                                    <span className="font-display-lg text-3xl font-bold font-code-tabular text-on-surface">
+                                        3m 48s
+                                    </span>
+                                </div>
+                                <span className="font-label-xs text-xs text-secondary font-semibold pt-2 border-t border-surface-container-high">
+                                    98.4% SLA Compliance
+                                </span>
+                            </div>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {departmentUnits.length > 0 ? (
-                                departmentUnits.map(unit => (
-                                    <div key={unit.id} style={{ background: '#0b1120', border: '1px solid #1e293b', padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.88rem' }}>{unit.name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Leader: {unit.leaderName || "Commander"}</div>
-                                        </div>
-                                        <span style={{
-                                            background: unit.status === "Available" ? 'rgba(16,185,129,0.2)' : 'rgba(59,130,246,0.2)',
-                                            color: unit.status === "Available" ? '#6ee7b7' : '#93c5fd',
-                                            padding: '4px 8px',
-                                            borderRadius: '6px',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700
-                                        }}>
-                                            {unit.status}
+                        {/* 3. Incidents Queue & Mutual Aid Ingress */}
+                        {incidents.length === 0 ? (
+                            <SectorAllClearEmptyState
+                                title={`${categoryKey} Sector Operational All Clear`}
+                                message={`All incidents in the ${config.title} grid have been resolved. Response units remain on standby.`}
+                            />
+                        ) : (
+                            <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container-high overflow-hidden">
+                                <div className="p-space-md border-b border-surface-container-high flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                                            Sector Incident Telemetry Queue
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant text-xs font-code-tabular font-bold">
+                                            {incidents.length} in scope
                                         </span>
                                     </div>
-                                ))
-                            ) : (
-                                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
-                                    No units registered for this department.
+                                    <span className="text-xs text-on-surface-variant font-code-tabular">
+                                        Scoped to {categoryKey} & Accepted Mutual-Aid
+                                    </span>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {/* SECTION 2: Cross-Department Support Requests Inbox */}
-            {activeSection === "requests" && (
-                <div className="card" style={{ padding: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Share2 size={20} color="#a855f7" />
-                            <span>Incoming Assistance Requests ({incomingRequests.length})</span>
-                        </div>
-                        <button
-                            onClick={fetchIncomingRequests}
-                            style={{ background: 'transparent', border: '1px solid #334155', color: '#94a3b8', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                            <RefreshCw size={14} />
-                            <span>Refresh</span>
-                        </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                        {incomingRequests.length > 0 ? (
-                            incomingRequests.map(req => (
-                                <div
-                                    key={req.id}
-                                    style={{
-                                        background: '#0b1120',
-                                        border: req.status === "PENDING" ? '1px solid #a855f7' : '1px solid #1e293b',
-                                        padding: '16px',
-                                        borderRadius: '12px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '10px'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontSize: '0.78rem', background: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-                                                REQ #{req.id}
-                                            </span>
-                                            <span style={{ fontSize: '0.78rem', background: '#1e293b', color: '#93c5fd', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                                                Incident #{req.incidentId}
-                                            </span>
-                                            {req.escalatedToSuperAdmin && (
-                                                <span style={{ fontSize: '0.75rem', background: '#ef4444', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-                                                    ⚠️ ESCALATED TO SUPER ADMIN
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{
-                                                fontSize: '0.75rem',
-                                                padding: '3px 8px',
-                                                borderRadius: '6px',
-                                                fontWeight: 800,
-                                                background: req.urgency === "CRITICAL" ? 'rgba(239,68,68,0.2)' : req.urgency === "HIGH" ? 'rgba(245,158,11,0.2)' : 'rgba(59,130,246,0.2)',
-                                                color: req.urgency === "CRITICAL" ? '#ef4444' : req.urgency === "HIGH" ? '#f59e0b' : '#3b82f6'
-                                            }}>
-                                                Urgency: {req.urgency}
-                                            </span>
-
-                                            <span style={{
-                                                fontSize: '0.75rem',
-                                                padding: '3px 8px',
-                                                borderRadius: '6px',
-                                                fontWeight: 800,
-                                                background: req.status === "ACCEPTED" ? 'rgba(16,185,129,0.2)' : req.status === "DECLINED" ? 'rgba(239,68,68,0.2)' : req.status === "RESOLVED" ? 'rgba(100,116,139,0.2)' : 'rgba(168,85,247,0.2)',
-                                                color: req.status === "ACCEPTED" ? '#10b981' : req.status === "DECLINED" ? '#ef4444' : req.status === "RESOLVED" ? '#94a3b8' : '#a855f7'
-                                            }}>
-                                                Status: {req.status}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 700 }}>
-                                            Requesting Department: <span style={{ color: '#fff' }}>{req.requestedByDepartment}</span>
-                                        </div>
-                                        <div style={{ fontSize: '0.9rem', color: '#e2e8f0', fontWeight: 700, marginTop: '4px' }}>
-                                            Required Support: <span style={{ color: '#38bdf8' }}>{req.requiredCapability}</span>
-                                        </div>
-                                        {req.notes && (
-                                            <div style={{ fontSize: '0.82rem', color: '#94a3b8', background: '#070b14', padding: '8px 12px', borderRadius: '6px', marginTop: '6px' }}>
-                                                "{req.notes}"
-                                            </div>
-                                        )}
-                                        {req.assignedUnitName && (
-                                            <div style={{ fontSize: '0.82rem', color: '#10b981', fontWeight: 700, marginTop: '6px' }}>
-                                                Assigned Squad Unit: {req.assignedUnitName} ({req.assignedUnitId || "Unit"})
-                                            </div>
-                                        )}
-                                        {req.declineReason && (
-                                            <div style={{ fontSize: '0.82rem', color: '#ef4444', marginTop: '6px' }}>
-                                                Decline Reason: {req.declineReason}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action buttons based on status */}
-                                    {req.status === "PENDING" && (
-                                        <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                            <button
-                                                onClick={() => {
-                                                    setAcceptingReqId(req.id);
-                                                    setDecliningReqId(null);
-                                                }}
-                                                style={{
-                                                    padding: '8px 14px',
-                                                    background: '#10b981',
-                                                    color: '#fff',
-                                                    border: 'none',
-                                                    borderRadius: '6px',
-                                                    fontWeight: 800,
-                                                    fontSize: '0.82rem',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px'
-                                                }}
-                                            >
-                                                <Check size={14} />
-                                                <span>Accept & Unlock Incident Access</span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => {
-                                                    setDecliningReqId(req.id);
-                                                    setAcceptingReqId(null);
-                                                }}
-                                                style={{
-                                                    padding: '8px 14px',
-                                                    background: 'transparent',
-                                                    border: '1px solid #ef4444',
-                                                    color: '#ef4444',
-                                                    borderRadius: '6px',
-                                                    fontWeight: 700,
-                                                    fontSize: '0.82rem',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px'
-                                                }}
-                                            >
-                                                <X size={14} />
-                                                <span>Decline Request</span>
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Inline Accept Unit Assignment Form */}
-                                    {acceptingReqId === req.id && (
-                                        <div style={{ background: '#1e293b', padding: '14px', borderRadius: '8px', marginTop: '8px', border: '1px solid #10b981' }}>
-                                            <div style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 700, marginBottom: '8px' }}>
-                                                Assign Squad Unit to Emergency Request:
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                <select
-                                                    value={selectedUnitId}
-                                                    onChange={e => setSelectedUnitId(e.target.value)}
-                                                    style={{ flex: 1, padding: '8px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '0.82rem' }}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-body-sm font-body-sm">
+                                        <thead className="bg-surface-container-low text-on-surface-variant font-label-xs text-label-xs uppercase tracking-wider border-b border-surface-container-high">
+                                            <tr>
+                                                <th className="p-3">CAD ID</th>
+                                                <th className="p-3">Incident Description & Coordinates</th>
+                                                <th className="p-3">Severity</th>
+                                                <th className="p-3">Status</th>
+                                                <th className="p-3">Assigned Fleet Unit</th>
+                                                <th className="p-3 text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-surface-container-high">
+                                            {incidents.map((inc) => (
+                                                <tr
+                                                    key={inc.id}
+                                                    onClick={() => setSelectedIncident(inc)}
+                                                    className="hover:bg-surface-container-low/60 cursor-pointer transition-colors"
                                                 >
-                                                    <option value="">-- Select Available Unit (Optional) --</option>
-                                                    {departmentUnits.map(unit => (
-                                                        <option key={unit.id} value={unit.id}>
-                                                            {unit.name} ({unit.status})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <button
-                                                    onClick={() => handleAcceptRequest(req.id)}
-                                                    style={{ padding: '8px 16px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 800, cursor: 'pointer' }}
-                                                >
-                                                    Confirm Accept
-                                                </button>
-                                                <button
-                                                    onClick={() => setAcceptingReqId(null)}
-                                                    style={{ padding: '8px 12px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Inline Decline Form */}
-                                    {decliningReqId === req.id && (
-                                        <div style={{ background: '#1e293b', padding: '14px', borderRadius: '8px', marginTop: '8px', border: '1px solid #ef4444' }}>
-                                            <div style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 700, marginBottom: '8px' }}>
-                                                Specify Reason for Declining Assistance Request:
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                <input
-                                                    type="text"
-                                                    value={declineReason}
-                                                    onChange={e => setDeclineReason(e.target.value)}
-                                                    placeholder="e.g. All units currently deployed on Level 5 emergency"
-                                                    style={{ flex: 1, padding: '8px', borderRadius: '6px', background: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '0.82rem' }}
-                                                />
-                                                <button
-                                                    onClick={() => handleDeclineRequest(req.id)}
-                                                    style={{ padding: '8px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 800, cursor: 'pointer' }}
-                                                >
-                                                    Confirm Decline
-                                                </button>
-                                                <button
-                                                    onClick={() => setDecliningReqId(null)}
-                                                    style={{ padding: '8px 12px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Accepted status resolve action */}
-                                    {req.status === "ACCEPTED" && (
-                                        <div style={{ marginTop: '8px' }}>
-                                            <button
-                                                onClick={() => handleResolveRequest(req.id)}
-                                                style={{
-                                                    padding: '6px 12px',
-                                                    background: '#334155',
-                                                    color: '#cbd5e1',
-                                                    border: '1px solid #475569',
-                                                    borderRadius: '6px',
-                                                    fontWeight: 700,
-                                                    fontSize: '0.78rem',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                Mark Cross-Dept Support Complete
-                                            </button>
-                                        </div>
-                                    )}
+                                                    <td className="p-3 font-code-tabular font-bold text-primary">
+                                                        {inc.id}
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="font-bold text-on-surface">{inc.title}</div>
+                                                        <div className="text-xs text-on-surface-variant">
+                                                            {inc.locationName || "Precinct Coordinates"}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span
+                                                            className={`font-code-tabular font-bold ${
+                                                                inc.severity >= 4 ? "text-error" : "text-secondary"
+                                                            }`}
+                                                        >
+                                                            P{inc.severity || 3}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface font-code-tabular text-xs font-bold">
+                                                            {inc.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3 font-code-tabular text-xs font-semibold">
+                                                        {inc.assignedUnitId || "None"}
+                                                    </td>
+                                                    <td className="p-3 text-right">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedIncident(inc);
+                                                            }}
+                                                            className="px-3 py-1 bg-primary text-on-primary rounded text-xs font-bold hover:bg-primary/90 transition-colors"
+                                                        >
+                                                            Manage CAD
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            ))
-                        ) : (
-                            <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
-                                {loadingRequests ? "Loading assistance requests..." : "No incoming service requests currently targeting your department."}
                             </div>
                         )}
                     </div>
-                </div>
+                </main>
+            </div>
+
+            {/* Detail Drawer */}
+            {selectedIncident && (
+                <IncidentDetailDrawer
+                    incident={selectedIncident}
+                    onClose={() => setSelectedIncident(null)}
+                    onUpdated={loadData}
+                    onRequestMutualAid={(inc) => setMutualAidIncident(inc)}
+                />
+            )}
+
+            {/* Mutual Aid Modal */}
+            {mutualAidIncident && (
+                <NewServiceRequestModal
+                    incident={mutualAidIncident}
+                    onClose={() => setMutualAidIncident(null)}
+                    onSuccess={loadData}
+                />
             )}
         </div>
     );
 }
-
-export default DepartmentAdminDashboard;
-

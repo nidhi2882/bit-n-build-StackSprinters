@@ -55,7 +55,6 @@ public class SecurityConfig {
                 .antMatchers("/api/reports/**").permitAll() // Public citizen ingestion
                 .antMatchers("/api/ingest/**").permitAll()  // Multi-source ingestion (citizen, SOS, IoT sensors)
                 .antMatchers("/api/taxonomy/**").permitAll() // Public emergency taxonomy
-                .antMatchers(org.springframework.http.HttpMethod.GET, "/api/incidents/**", "/api/service-requests/**").permitAll() // Public tracking & service requests
                 .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated().and()
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

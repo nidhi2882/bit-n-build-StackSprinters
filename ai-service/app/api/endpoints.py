@@ -31,6 +31,10 @@ class DuplicateCheckRequest(BaseModel):
 class CopilotRequest(BaseModel):
     query: str
     context: Optional[Dict[str, Any]] = {}
+    apiKey: Optional[str] = None
+
+class SetKeyRequest(BaseModel):
+    apiKey: str
 
 @router.get("/health")
 def health_check():
@@ -55,4 +59,14 @@ def check_duplicates(req: DuplicateCheckRequest):
 
 @router.post("/copilot")
 def query_copilot(req: CopilotRequest):
-    return copilot_engine.answer_query(req.query, req.context)
+    return copilot_engine.answer_query(req.query, req.context, explicit_key=req.apiKey)
+
+@router.get("/copilot/status")
+def get_copilot_status():
+    return copilot_engine.get_active_key_info()
+
+@router.post("/copilot/set-key")
+def set_copilot_key(req: SetKeyRequest):
+    copilot_engine.set_api_key(req.apiKey)
+    return copilot_engine.get_active_key_info()
+

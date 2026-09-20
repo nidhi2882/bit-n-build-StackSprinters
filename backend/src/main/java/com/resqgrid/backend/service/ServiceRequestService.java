@@ -59,12 +59,11 @@ public class ServiceRequestService {
                 .orElseThrow(() -> new RuntimeException("Incident not found: " + incidentId));
 
         String byDept = (currentUser != null && currentUser.getDepartmentCategory() != null)
-                ? currentUser.getDepartmentCategory()
-                : ("CAT_" + (incident.getType() != null ? incident.getType().toUpperCase() : "GENERAL"));
+                ? currentUser.getDepartmentCategory().toUpperCase().replace("CAT_", "")
+                : (incident.getCategory() != null ? incident.getCategory().toUpperCase() : "FLOOD");
 
-        String formattedTargetDept = targetDepartment != null && targetDepartment.startsWith("CAT_")
-                ? targetDepartment
-                : ("CAT_" + (targetDepartment != null ? targetDepartment.toUpperCase() : "FIRE"));
+        DepartmentCategory targetCat = DepartmentCategory.fromString(targetDepartment);
+        String formattedTargetDept = targetCat != null ? targetCat.name() : (targetDepartment != null ? targetDepartment.toUpperCase().replace("CAT_", "") : "FIRE");
 
         ServiceRequest request = ServiceRequest.builder()
                 .incidentId(incidentId)
@@ -92,6 +91,7 @@ public class ServiceRequestService {
                         incident.getId(), incident.getTitle(), formattedTargetDept, saved.getUrgency(), reason))
                 .incidentId(incidentId)
                 .targetDepartment(formattedTargetDept)
+                .actionRequired("Review and Accept/Decline Aid Request")
                 .active(true)
                 .time("Just now")
                 .createdAt(LocalDateTime.now())
@@ -104,8 +104,8 @@ public class ServiceRequestService {
 
     public List<ServiceRequest> getIncomingRequests(UserPrincipal currentUser) {
         if (currentUser == null) return Collections.emptyList();
-        String role = currentUser.getRole() != null ? currentUser.getRole().toUpperCase() : "";
-        if (role.contains("SUPER_ADMIN") || role.contains("SUPER ADMIN")) {
+        String role = currentUser.getRole() != null ? currentUser.getRole().toUpperCase().replace(" ", "_") : "";
+        if (role.contains("SUPER_ADMIN")) {
             return serviceRequestRepository.findAllByOrderByCreatedAtDesc();
         }
 
@@ -115,8 +115,39 @@ public class ServiceRequestService {
         }
 
         String rawCat = deptCat.toUpperCase().replace("CAT_", "");
-        List<String> variants = Arrays.asList(deptCat, "CAT_" + rawCat, rawCat);
-        return serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInOrderByCreatedAtDesc(variants);
+        List<ServiceRequest> all = serviceRequestRepository.findAllByOrderByCreatedAtDesc();
+        List<ServiceRequest> incoming = new ArrayList<>();
+        for (ServiceRequest req : all) {
+            String to = req.getRequestedDepartment() != null ? req.getRequestedDepartment().toUpperCase().replace("CAT_", "") : "";
+            if (to.equalsIgnoreCase(rawCat)) {
+                incoming.add(req);
+            }
+        }
+        return incoming;
+    }
+
+    public List<ServiceRequest> getSentRequests(UserPrincipal currentUser) {
+        if (currentUser == null) return Collections.emptyList();
+        String role = currentUser.getRole() != null ? currentUser.getRole().toUpperCase().replace(" ", "_") : "";
+        if (role.contains("SUPER_ADMIN")) {
+            return serviceRequestRepository.findAllByOrderByCreatedAtDesc();
+        }
+
+        String deptCat = currentUser.getDepartmentCategory();
+        if (deptCat == null || deptCat.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String rawCat = deptCat.toUpperCase().replace("CAT_", "");
+        List<ServiceRequest> all = serviceRequestRepository.findAllByOrderByCreatedAtDesc();
+        List<ServiceRequest> sent = new ArrayList<>();
+        for (ServiceRequest req : all) {
+            String by = req.getRequestedByDepartment() != null ? req.getRequestedByDepartment().toUpperCase().replace("CAT_", "") : "";
+            if (by.equalsIgnoreCase(rawCat)) {
+                sent.add(req);
+            }
+        }
+        return sent;
     }
 
     public List<ServiceRequest> getRequestsForIncident(String incidentId) {
@@ -125,6 +156,24 @@ public class ServiceRequestService {
 
     public List<ServiceRequest> getAllServiceRequests() {
         return serviceRequestRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    public List<String> getIncidentIdsAccessibleViaAcceptedRequests(String departmentCategory) {
+        if (departmentCategory == null || departmentCategory.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        String rawCat = departmentCategory.toUpperCase().replace("CAT_", "");
+        List<ServiceRequest> all = serviceRequestRepository.findAll();
+        List<String> incidentIds = new ArrayList<>();
+        for (ServiceRequest req : all) {
+            if ("ACCEPTED".equalsIgnoreCase(req.getStatus())) {
+                String toDept = req.getRequestedDepartment() != null ? req.getRequestedDepartment().toUpperCase().replace("CAT_", "") : "";
+                if (toDept.equalsIgnoreCase(rawCat)) {
+                    incidentIds.add(req.getIncidentId());
+                }
+            }
+        }
+        return incidentIds;
     }
 
     @Transactional
@@ -146,12 +195,13 @@ public class ServiceRequestService {
                 }
                 if (!incident.getAssignedResourceIds().contains(assignedUnitId)) {
                     incident.getAssignedResourceIds().add(assignedUnitId);
-                    if ("Reported".equalsIgnoreCase(incident.getStatus())) {
-                        incident.setStatus("Assigned");
-                    }
-                    incidentRepository.save(incident);
-                    mongoSyncService.syncIncident(incident);
                 }
+                incident.setAssignedUnitId(assignedUnitId);
+                if ("Reported".equalsIgnoreCase(incident.getStatus())) {
+                    incident.setStatus("Assigned");
+                }
+                incidentRepository.save(incident);
+                mongoSyncService.syncIncident(incident);
             }
 
             Resource unit = resourceRepository.findById(assignedUnitId).orElse(null);
@@ -164,7 +214,7 @@ public class ServiceRequestService {
         }
 
         // Log Timeline Activity
-        logActivity(req.getIncidentId(), String.format("Service Request ACCEPTED by %s. Assigned Unit: %s",
+        logActivity(req.getIncidentId(), String.format("Mutual Aid Service Request ACCEPTED by %s. Assigned Unit: %s",
                 req.getRequestedDepartment(), assignedUnitId != null ? assignedUnitId : "Pending Unit"),
                 currentUser != null ? currentUser.getUsername() : req.getRequestedDepartment());
 
@@ -177,6 +227,7 @@ public class ServiceRequestService {
                         req.getRequestedDepartment(), req.getIncidentId(), assignedUnitId != null ? assignedUnitId : "TBD"))
                 .incidentId(req.getIncidentId())
                 .targetDepartment(req.getRequestedByDepartment())
+                .actionRequired("Acknowledge Staged Mutual Aid")
                 .active(true)
                 .time("Just now")
                 .createdAt(LocalDateTime.now())
@@ -198,7 +249,7 @@ public class ServiceRequestService {
         ServiceRequest saved = serviceRequestRepository.save(req);
 
         // Log Timeline Activity
-        logActivity(req.getIncidentId(), String.format("Service Request DECLINED by %s. Reason: %s",
+        logActivity(req.getIncidentId(), String.format("Mutual Aid Service Request DECLINED by %s. Reason: %s",
                 req.getRequestedDepartment(), declineReason != null ? declineReason : "No reason provided"),
                 currentUser != null ? currentUser.getUsername() : req.getRequestedDepartment());
 
@@ -211,6 +262,7 @@ public class ServiceRequestService {
                         req.getRequestedDepartment(), req.getIncidentId(), declineReason != null ? declineReason : "None"))
                 .incidentId(req.getIncidentId())
                 .targetDepartment(req.getRequestedByDepartment())
+                .actionRequired("Re-route Requisition to Alternative Dept")
                 .active(true)
                 .time("Just now")
                 .createdAt(LocalDateTime.now())
@@ -230,10 +282,48 @@ public class ServiceRequestService {
         req.setUpdatedAt(LocalDateTime.now());
         ServiceRequest saved = serviceRequestRepository.save(req);
 
-        // Log Timeline Activity
-        logActivity(req.getIncidentId(), String.format("Service Request for %s RESOLVED.", req.getRequestedDepartment()),
+        logActivity(req.getIncidentId(), String.format("Mutual Aid Service Request for %s RESOLVED.", req.getRequestedDepartment()),
                 currentUser != null ? currentUser.getUsername() : req.getRequestedDepartment());
 
         return saved;
+    }
+
+    @Transactional
+    public int autoEscalateCriticalRequests() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(5);
+        List<ServiceRequest> pendingCritical = serviceRequestRepository.findByStatusIgnoreCaseAndUrgencyIgnoreCaseAndCreatedAtBefore(
+                "PENDING", "CRITICAL", cutoff);
+
+        int count = 0;
+        for (ServiceRequest req : pendingCritical) {
+            String currentReason = req.getReason() != null ? req.getReason() : "";
+            if (!currentReason.contains("[AUTO-ESCALATED TO SUPER_ADMIN]")) {
+                req.setReason(currentReason + " [AUTO-ESCALATED TO SUPER_ADMIN: Unacknowledged for > 5 min]");
+                req.setUpdatedAt(LocalDateTime.now());
+                serviceRequestRepository.save(req);
+
+                logActivity(req.getIncidentId(),
+                        String.format("CRITICAL MUTUAL AID TIMEOUT: Service request %d to %s auto-escalated to SUPER_ADMIN.",
+                                req.getId(), req.getRequestedDepartment()), "CAD_AUTOMATION");
+
+                Alert alert = Alert.builder()
+                        .id("ALT-ESC-" + System.currentTimeMillis() + "-" + req.getId())
+                        .type("CRITICAL_ESCALATION")
+                        .title("CRITICAL AID AUTO-ESCALATED TO COMMAND")
+                        .message(String.format("Service request %d (Incident %s) to %s pending > 5 min. Immediate Super Admin intervention requested.",
+                                req.getId(), req.getIncidentId(), req.getRequestedDepartment()))
+                        .incidentId(req.getIncidentId())
+                        .targetDepartment("SUPER_ADMIN")
+                        .actionRequired("Intervene and Override Dispatch")
+                        .active(true)
+                        .time("Just now")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+                alertRepository.save(alert);
+                mongoSyncService.syncAlert(alert);
+                count++;
+            }
+        }
+        return count;
     }
 }

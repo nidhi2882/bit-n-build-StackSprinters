@@ -62,6 +62,18 @@ export const incidentService = {
         }
     },
 
+    // Reclassify incident category
+    reclassifyIncident: async (incidentId, category, reason = "") => {
+        const response = await apiClient.patch(`/incidents/${incidentId}/reclassify`, { category, reason });
+        return response.data;
+    },
+
+    // Get incident by ID
+    getIncidentById: async (incidentId) => {
+        const response = await apiClient.get(`/incidents/${incidentId}`);
+        return response.data;
+    },
+
     // Merge duplicate incident into master
     mergeIncidents: async (masterId, duplicateId) => {
         try {
