@@ -27,6 +27,7 @@ public class DataInitializer implements CommandLineRunner {
     private final AlertRepository alertRepository;
     private final EmergencyCategoryRepository categoryRepository;
     private final EmergencySubTypeRepository subTypeRepository;
+    private final ServiceRequestRepository serviceRequestRepository;
     private final MongoTemplate mongoTemplate;
     private final PasswordEncoder passwordEncoder;
 
@@ -39,6 +40,7 @@ public class DataInitializer implements CommandLineRunner {
             AlertRepository alertRepository,
             EmergencyCategoryRepository categoryRepository,
             EmergencySubTypeRepository subTypeRepository,
+            ServiceRequestRepository serviceRequestRepository,
             @Autowired(required = false) MongoTemplate mongoTemplate,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
@@ -48,6 +50,7 @@ public class DataInitializer implements CommandLineRunner {
         this.alertRepository = alertRepository;
         this.categoryRepository = categoryRepository;
         this.subTypeRepository = subTypeRepository;
+        this.serviceRequestRepository = serviceRequestRepository;
         this.mongoTemplate = mongoTemplate;
         this.passwordEncoder = passwordEncoder;
     }
@@ -84,236 +87,278 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
 
-        // Ensure baseline operator and citizen accounts exist if database is fresh
-        if (userRepository.count() == 0) {
-            User superAdmin = User.builder()
-                    .name("Super Admin Control")
-                    .email("superadmin@resqgrid.gov")
-                    .password(passwordEncoder.encode("superadmin123"))
-                    .role("Super Admin")
-                    .phone("+91 90000 00001")
-                    .organization("ResQGrid Command & Control Center")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User fireAdmin = User.builder()
-                    .name("Captain Suresh Kumar (Fire Admin)")
-                    .email("fire.admin@resqgrid.gov")
-                    .password(passwordEncoder.encode("fireadmin123"))
-                    .role("Department Admin")
-                    .departmentCategory("CAT_FIRE")
-                    .phone("+91 98234 56790")
-                    .organization("Vadodara Fire Department")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User floodAdmin = User.builder()
-                    .name("Commander Rajesh Rao (Flood Admin)")
-                    .email("flood.admin@resqgrid.gov")
-                    .password(passwordEncoder.encode("floodadmin123"))
-                    .role("Department Admin")
-                    .departmentCategory("CAT_FLOOD")
-                    .phone("+91 98234 56789")
-                    .organization("NDRF Flood Command")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User medicalAdmin = User.builder()
-                    .name("Dr. Sunita Patel (Medical Admin)")
-                    .email("medical.admin@resqgrid.gov")
-                    .password(passwordEncoder.encode("medadmin123"))
-                    .role("Department Admin")
-                    .departmentCategory("CAT_MED")
-                    .phone("+91 98111 22334")
-                    .organization("SSG Hospital ER")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User policeAdmin = User.builder()
-                    .name("Inspector Ramesh Patel (Police Admin)")
-                    .email("police.admin@resqgrid.gov")
-                    .password(passwordEncoder.encode("policeadmin123"))
-                    .role("Department Admin")
-                    .departmentCategory("CAT_SECURITY")
-                    .phone("+91 98234 56794")
-                    .organization("Vadodara Police Dept")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User operator = User.builder()
-                    .name("Vikram Mehta")
-                    .email("operator@resqgrid.gov")
-                    .password(passwordEncoder.encode("operator123"))
-                    .role("Emergency Operator")
-                    .phone("+91 98765 43210")
-                    .organization("Vadodara Emergency Response Center (VERC)")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User responder = User.builder()
-                    .name("NDRF Water Rescue Unit 01")
-                    .email("responder@ndrf.gov")
-                    .password(passwordEncoder.encode("responder123"))
-                    .role("Response Team")
-                    .unitId("RES-001")
-                    .departmentCategory("CAT_FLOOD")
-                    .phone("+91 98234 56789")
-                    .organization("6th Bn NDRF Jarod")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User fireSquad = User.builder()
-                    .name("Vadodara Fire Squad 04")
-                    .email("fire.squad@resqgrid.gov")
-                    .password(passwordEncoder.encode("firesquad123"))
-                    .role("Response Team")
-                    .unitId("RES-002")
-                    .departmentCategory("CAT_FIRE")
-                    .phone("+91 98234 56790")
-                    .organization("Dandiyabazar Fire Station")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User hospitalAdmin = User.builder()
-                    .name("Dr. Sunita Patel")
-                    .email("hospital@ssg.org")
-                    .password(passwordEncoder.encode("hospital123"))
-                    .role("Hospital Admin")
-                    .phone("+91 98111 22334")
-                    .organization("SSG Hospital Trauma Center")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User authority = User.builder()
-                    .name("Collector Ananya Sharma, IAS")
-                    .email("authority@vadodara.gov")
-                    .password(passwordEncoder.encode("authority123"))
-                    .role("Authority Admin")
-                    .phone("+91 98000 11223")
-                    .organization("District Disaster Management Authority (DDMA)")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            User citizen = User.builder()
-                    .name("Aarav Patel")
-                    .email("citizen@resqgrid.org")
-                    .password(passwordEncoder.encode("citizen123"))
-                    .role("Citizen")
-                    .phone("+91 97234 11223")
-                    .organization("Citizen Community Network (Akota)")
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            List<User> initialUsers = Arrays.asList(superAdmin, fireAdmin, floodAdmin, medicalAdmin, policeAdmin, operator, responder, fireSquad, hospitalAdmin, authority, citizen);
-            userRepository.saveAll(initialUsers);
-            if (mongoTemplate != null) {
-                try {
-                    initialUsers.forEach(u -> mongoTemplate.save(u, "users"));
-                } catch (Exception e) {
-                    log.warn("Mongo user seeding notice: {}", e.getMessage());
-                }
-            }
-        } else {
-            // Re-encode plain text passwords if any existing seeded users have non-BCrypt passwords
-            List<User> existingUsers = userRepository.findAll();
-            for (User u : existingUsers) {
-                if (u.getPassword() != null && !u.getPassword().startsWith("$2a$")) {
-                    String raw = u.getPassword();
-                    u.setPassword(passwordEncoder.encode(raw));
-                    userRepository.save(u);
-                    if (mongoTemplate != null) {
-                        try {
-                            mongoTemplate.save(u, "users");
-                        } catch (Exception ignored) {}
-                    }
-                }
-            }
-        }
-
-        // Seed sample incidents if fresh
-        if (incidentRepository.count() == 0) {
-            log.info("Seeding sample incidents for multi-role testing...");
-            Incident inc1 = Incident.builder()
-                    .id("INC-2026-001")
-                    .title("Flash Flood Inundation near Vishwamitri Bridge")
-                    .type("FLOOD")
-                    .description("Water level rising rapidly over 4 feet near bridge. 12 stranded residents reported.")
-                    .severity(4)
-                    .status("Reported")
-                    .locationName("Vishwamitri River Bridge, Vadodara")
-                    .lat(22.3100)
-                    .lng(73.1800)
-                    .reporterRole("Citizen")
-                    .reporterEmail("citizen@resqgrid.org")
-                    .aiSummary("Critical urban flood surge. Requires boat deployment.")
-                    .aiConfidence(0.95)
-                    .requiredCapabilities(Arrays.asList("Water Rescue", "Inflatable Boat"))
-                    .reportedAt(LocalDateTime.now().minusMinutes(45))
-                    .build();
-
-            Incident inc2 = Incident.builder()
-                    .id("INC-2026-002")
-                    .title("Structural Fire at Chemical Warehouse")
-                    .type("FIRE")
-                    .description("Dense chemical smoke reported in GIDC Nandesari industrial block. Explosion risk.")
-                    .severity(5)
-                    .status("Reported")
-                    .locationName("GIDC Nandesari Industrial Estate")
-                    .lat(22.3500)
-                    .lng(73.1500)
-                    .reporterRole("Citizen")
-                    .reporterEmail("citizen@resqgrid.org")
-                    .aiSummary("Level-5 Chemical & Structural Fire. Hazmat & foam tender required.")
-                    .aiConfidence(0.98)
-                    .requiredCapabilities(Arrays.asList("Fire Engine", "Foam Tender", "Hazmat Unit"))
-                    .reportedAt(LocalDateTime.now().minusMinutes(20))
-                    .build();
-
-            Incident inc3 = Incident.builder()
-                    .id("INC-2026-003")
-                    .title("Highway Multi-Vehicle Crash & Medical Emergency")
-                    .type("MEDICAL")
-                    .description("Collided bus and tanker near Golden Chowkdi. 3 injured passengers need evacuation.")
-                    .severity(3)
-                    .status("Assigned")
-                    .assignedResourceIds(Arrays.asList("RES-001"))
-                    .locationName("Golden Chowkdi, NH-48")
-                    .lat(22.3300)
-                    .lng(73.2200)
-                    .reporterRole("Citizen")
-                    .reporterEmail("citizen@resqgrid.org")
-                    .aiSummary("Medical emergency requiring ambulance and trauma response.")
-                    .aiConfidence(0.91)
-                    .requiredCapabilities(Arrays.asList("Emergency Medical", "Advanced Ambulance"))
-                    .reportedAt(LocalDateTime.now().minusMinutes(10))
-                    .build();
-
-            List<Incident> sampleIncidents = Arrays.asList(inc1, inc2, inc3);
-            incidentRepository.saveAll(sampleIncidents);
-            if (mongoTemplate != null) {
-                try {
-                    sampleIncidents.forEach(i -> mongoTemplate.save(i, "incidents"));
-                } catch (Exception e) {
-                    log.warn("Mongo incident seeding notice: {}", e.getMessage());
-                }
-            }
-        }
+        seedUsers();
+        seedIncidents();
         seedResources();
+        seedServiceRequests();
 
-        log.info("ResQGrid initialized with clean state. All incident and emergency reports enter exclusively through the web portal.");
+        log.info("ResQGrid initialized with full 9-department data and credentials ready.");
+    }
+
+    private void seedUsers() {
+        // Super Admins
+        upsertUser("David Chandler (Super Admin)", "david.chandler@resqgrid.gov", "admin123", "SUPER_ADMIN", null, "+91 90000 00000", "ResQGrid Command & Control Center");
+        upsertUser("Super Admin Control", "superadmin@resqgrid.gov", "superadmin123", "SUPER_ADMIN", null, "+91 90000 00001", "ResQGrid Command & Control Center");
+
+        // 9 Department Admins
+        upsertUser("Commander Rajesh Rao (Flood Admin)", "flood.admin@resqgrid.gov", "floodadmin123", "DEPARTMENT_ADMIN", "FLOOD", "+91 98234 56789", "NDRF Flood Command");
+        upsertUser("Captain Suresh Kumar (Fire Admin)", "fire.admin@resqgrid.gov", "fireadmin123", "DEPARTMENT_ADMIN", "FIRE", "+91 98234 56790", "Vadodara Fire Department");
+        upsertUser("Dr. Sunita Patel (Medical Admin)", "medical.admin@resqgrid.gov", "medadmin123", "DEPARTMENT_ADMIN", "MEDICAL", "+91 98111 22334", "SSG Hospital ER");
+        upsertUser("Chief Devendra Joshi (Crash Admin)", "crash.admin@resqgrid.gov", "crashadmin123", "DEPARTMENT_ADMIN", "CRASH", "+91 98234 56797", "Highway Crash Response Division");
+        upsertUser("Dr. Priya Nair (Hazmat Admin)", "hazmat.admin@resqgrid.gov", "hazmatadmin123", "DEPARTMENT_ADMIN", "HAZMAT", "+91 98234 56793", "Industrial Hazmat Command");
+        upsertUser("Major Vikram Singh (Collapse Admin)", "collapse.admin@resqgrid.gov", "collapseadmin123", "DEPARTMENT_ADMIN", "COLLAPSE", "+91 98234 56792", "USAR Structural Collapse Wing");
+        upsertUser("Director Anil Verma (Cyclone Admin)", "cyclone.admin@resqgrid.gov", "cycloneadmin123", "DEPARTMENT_ADMIN", "CYCLONE", "+91 98234 56798", "Cyclone Disaster Management");
+        upsertUser("Captain Ankit Mehta (SAR Admin)", "rescue.admin@resqgrid.gov", "rescueadmin123", "DEPARTMENT_ADMIN", "SEARCH_RESCUE", "+91 98234 56796", "Mountain & Wilderness SAR Command");
+        upsertUser("Inspector Ramesh Patel (Police Admin)", "police.admin@resqgrid.gov", "policeadmin123", "DEPARTMENT_ADMIN", "POLICE", "+91 98234 56794", "Vadodara Police Department");
+
+        // Citizens
+        upsertUser("Aarav Patel", "citizen@resqgrid.gov", "citizen123", "CITIZEN", null, "+91 97234 11223", "Citizen Community Network");
+        upsertUser("Aarav Patel", "citizen@resqgrid.org", "citizen123", "CITIZEN", null, "+91 97234 11223", "Citizen Community Network");
+    }
+
+    private void upsertUser(String name, String email, String rawPassword, String role, String departmentCategory, String phone, String organization) {
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            user = User.builder()
+                    .name(name)
+                    .email(email)
+                    .password(passwordEncoder.encode(rawPassword))
+                    .role(role)
+                    .departmentCategory(departmentCategory)
+                    .phone(phone)
+                    .organization(organization)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            userRepository.save(user);
+            log.info("Created user: {} ({}) with role {}", email, name, role);
+        } else {
+            boolean updated = false;
+            if (user.getPassword() == null || !user.getPassword().startsWith("$2a$")) {
+                user.setPassword(passwordEncoder.encode(rawPassword));
+                updated = true;
+            }
+            if (role != null && !role.equalsIgnoreCase(user.getRole())) {
+                user.setRole(role);
+                updated = true;
+            }
+            if (departmentCategory != null && !departmentCategory.equalsIgnoreCase(user.getDepartmentCategory())) {
+                user.setDepartmentCategory(departmentCategory);
+                updated = true;
+            }
+            if (updated) {
+                userRepository.save(user);
+            }
+        }
+        if (mongoTemplate != null && user != null) {
+            try {
+                mongoTemplate.save(user, "users");
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void seedIncidents() {
+        if (incidentRepository.count() >= 9) {
+            return;
+        }
+
+        List<Incident> sampleIncidents = Arrays.asList(
+                Incident.builder()
+                        .id("INC-2026-001")
+                        .title("Flash Flood Inundation near Vishwamitri Bridge")
+                        .type("FLOOD")
+                        .category("FLOOD")
+                        .description("Water level rising rapidly over 4 feet near bridge. 12 stranded residents reported on rooftops.")
+                        .severity(4)
+                        .status("Reported")
+                        .locationName("Vishwamitri River Bridge, Vadodara")
+                        .lat(22.3100)
+                        .lng(73.1800)
+                        .reporterRole("Citizen")
+                        .reporterEmail("citizen@resqgrid.gov")
+                        .reporterName("Aarav Patel")
+                        .reporterPhone("+91 97234 11223")
+                        .aiSummary("Critical urban flood surge. Requires boat deployment.")
+                        .aiConfidence(0.95)
+                        .requiredCapabilities(Arrays.asList("Water Rescue", "Inflatable Boat"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(50))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-002")
+                        .title("Structural Fire at Chemical Warehouse")
+                        .type("FIRE")
+                        .category("FIRE")
+                        .description("Dense chemical smoke reported in GIDC Nandesari industrial block. Explosion risk.")
+                        .severity(5)
+                        .status("En Route")
+                        .assignedUnitId("RES-002")
+                        .assignedResourceIds(Arrays.asList("RES-002"))
+                        .locationName("GIDC Nandesari Industrial Estate")
+                        .lat(22.3500)
+                        .lng(73.1500)
+                        .reporterRole("Citizen")
+                        .reporterEmail("citizen@resqgrid.gov")
+                        .aiSummary("Level-5 Chemical & Structural Fire. Hazmat & foam tender required.")
+                        .aiConfidence(0.98)
+                        .requiredCapabilities(Arrays.asList("Fire Engine", "Foam Tender", "Hazmat Unit"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(35))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-003")
+                        .title("Highway Multi-Vehicle Crash & Medical Emergency")
+                        .type("MEDICAL")
+                        .category("MEDICAL")
+                        .description("Collided bus and tanker near Golden Chowkdi. 3 injured passengers need critical evacuation.")
+                        .severity(3)
+                        .status("Assigned")
+                        .assignedUnitId("RES-003")
+                        .assignedResourceIds(Arrays.asList("RES-003"))
+                        .locationName("Golden Chowkdi, NH-48")
+                        .lat(22.3300)
+                        .lng(73.2200)
+                        .reporterRole("Citizen")
+                        .reporterEmail("citizen@resqgrid.gov")
+                        .aiSummary("Medical emergency requiring ambulance and trauma response.")
+                        .aiConfidence(0.91)
+                        .requiredCapabilities(Arrays.asList("Emergency Medical", "Advanced Ambulance"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(25))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-004")
+                        .title("Multi-Car Pileup on Expressway NH-48")
+                        .type("CRASH")
+                        .category("CRASH")
+                        .description("Five vehicles collided with one overturned heavy truck blocking two lanes.")
+                        .severity(4)
+                        .status("Reported")
+                        .locationName("NH-48 Milepost 114, Vadodara Bypass")
+                        .lat(22.3420)
+                        .lng(73.2150)
+                        .reporterRole("Citizen")
+                        .reporterEmail("citizen@resqgrid.gov")
+                        .aiSummary("Major highway crash with entrapment risk.")
+                        .aiConfidence(0.93)
+                        .requiredCapabilities(Arrays.asList("Extrication Equipment", "Heavy Tow"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(18))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-005")
+                        .title("Ammonia Pipeline Rupture in Fertilizer Zone")
+                        .type("HAZMAT")
+                        .category("HAZMAT")
+                        .description("High-pressure vapor cloud detected near valve station. Evacuation radius 800m.")
+                        .severity(5)
+                        .status("Reported")
+                        .locationName("GSFC Plant Area 3, Fertilizer Nagar")
+                        .lat(22.3680)
+                        .lng(73.1420)
+                        .reporterRole("Operator")
+                        .reporterEmail("operator@resqgrid.gov")
+                        .aiSummary("Hazardous chemical leak requiring Level-A HAZMAT protective response.")
+                        .aiConfidence(0.97)
+                        .requiredCapabilities(Arrays.asList("HAZMAT Level A", "Decontamination"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(12))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-006")
+                        .title("Commercial Complex Structural Partial Collapse")
+                        .type("COLLAPSE")
+                        .category("COLLAPSE")
+                        .description("Underground parking excavation collapse caused partial wall failure. 4 workers trapped.")
+                        .severity(5)
+                        .status("Reported")
+                        .locationName("Alkapuri Commercial Plaza, RC Dutt Road")
+                        .lat(22.3120)
+                        .lng(73.1710)
+                        .reporterRole("Citizen")
+                        .reporterEmail("citizen@resqgrid.gov")
+                        .aiSummary("Structural collapse with void entrapment.")
+                        .aiConfidence(0.96)
+                        .requiredCapabilities(Arrays.asList("USAR Team", "Concrete Breaker", "Search Dogs"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(10))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-007")
+                        .title("Category 3 Cyclone Inundation & Wind Damage")
+                        .type("CYCLONE")
+                        .category("CYCLONE")
+                        .description("High-speed gales 110 km/h uprooted massive trees and severed overhead power lines.")
+                        .severity(4)
+                        .status("Reported")
+                        .locationName("Sayaji Garden & Perimeter Road")
+                        .lat(22.3160)
+                        .lng(73.1890)
+                        .reporterRole("Citizen")
+                        .reporterEmail("citizen@resqgrid.gov")
+                        .aiSummary("Cyclone damage with downed live power lines.")
+                        .aiConfidence(0.89)
+                        .requiredCapabilities(Arrays.asList("Tree Clearing", "High Voltage Crew", "Debris Clearance"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(8))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-008")
+                        .title("Lost Trekkers in Pavagadh Forest Ridge")
+                        .type("SEARCH_RESCUE")
+                        .category("SEARCH_RESCUE")
+                        .description("A group of 3 hikers failed to return before dusk; last contact near northern ridge cliff.")
+                        .severity(3)
+                        .status("Reported")
+                        .locationName("Pavagadh Hill North Trail, Ridge Sector 4")
+                        .lat(22.4600)
+                        .lng(73.5200)
+                        .reporterRole("Citizen")
+                        .reporterEmail("citizen@resqgrid.gov")
+                        .aiSummary("Wilderness search and rescue operation with night-vision and thermal drones required.")
+                        .aiConfidence(0.92)
+                        .requiredCapabilities(Arrays.asList("Thermal Drone", "Rope Rescue", "Search Dogs"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(4))
+                        .build(),
+
+                Incident.builder()
+                        .id("INC-2026-009")
+                        .title("Perimeter Breach & Civil Disturbance near Substation")
+                        .type("POLICE")
+                        .category("POLICE")
+                        .description("Unruly mob attempting unauthorized access to primary electrical grid station.")
+                        .severity(3)
+                        .status("Reported")
+                        .locationName("Makarpura Substation West Gate")
+                        .lat(22.2580)
+                        .lng(73.1950)
+                        .reporterRole("Operator")
+                        .reporterEmail("operator@resqgrid.gov")
+                        .aiSummary("Civil crowd control and perimeter security enforcement required.")
+                        .aiConfidence(0.94)
+                        .requiredCapabilities(Arrays.asList("Crowd Control", "Barricades", "Tactical Unit"))
+                        .reportedAt(LocalDateTime.now().minusMinutes(2))
+                        .build()
+        );
+
+        for (Incident inc : sampleIncidents) {
+            if (!incidentRepository.existsById(inc.getId())) {
+                incidentRepository.save(inc);
+            }
+        }
     }
 
     private void seedResources() {
-        log.info("Seeding Phase 6 Emergency Response Units into Resource Registry...");
+        log.info("Seeding ResQGrid Units for all 9 departments into Resource Registry...");
         List<Resource> seedResources = Arrays.asList(
-                new Resource("RES-001", "NDRF Water Rescue Team 01", "Water Rescue", "Available", 22.3100, 73.1800, "Jarod Base", "+91 98234 56789", "Commander Rajesh Rao", 12, Arrays.asList("WATER_RESCUE", "INFLATABLE_BOAT", "HEAVY_PUMP", "HIGH_CAPACITY_PUMP", "TEMPORARY_SHELTER", "DRAINAGE_UNIT"), null),
-                new Resource("RES-002", "Vadodara Fire Tender 04", "Fire & Rescue", "Available", 22.3050, 73.1780, "Dandiyabazar Fire Station", "+91 98234 56790", "Captain Suresh Kumar", 6, Arrays.asList("FIRE_ENGINE", "FOAM_TENDER", "LADDER_TRUCK", "BREATHING_APPARATUS", "FOREST_FIRE_TRUCK", "EXTRICATION_EQUIPMENT", "HAZMAT_SUIT"), null),
-                new Resource("RES-003", "SSG Trauma ALS Ambulance 02", "Advanced Ambulance", "Available", 22.3020, 73.1880, "SSG Hospital ER", "+91 98234 56791", "Dr. Amit Shah", 4, Arrays.asList("ADVANCED_AMBULANCE", "TRAUMA_TEAM", "PARAMEDIC_TEAM", "ICU_BED_CAPACITY", "BASIC_AMBULANCE", "TRIAGE_KIT", "AMBULANCE", "ICU_BEDS"), null),
-                new Resource("RES-004", "USAR Heavy Rescue Team 01", "Urban Search & Rescue", "Available", 22.3380, 73.1740, "Gorwa USAR Station", "+91 98234 56792", "Major Vikram Singh", 15, Arrays.asList("SEARCH_DOGS", "CONCRETE_CUTTER", "HEAVY_CRANE", "STRUCTURAL_ENGINEER", "USAR_TEAM", "CONCRETE_BREAKER", "CRANE", "HEAVY_EARTHMOVER", "EARTHMOVER"), null),
-                new Resource("RES-005", "Hazmat Decon Unit 01", "Hazmat Unit", "Available", 22.3150, 73.1950, "GSFC Industrial Complex", "+91 98234 56793", "Inspector Priya Nair", 8, Arrays.asList("HAZMAT_SUIT_LEVEL_A", "GAS_DETECTOR", "DECONTAMINATION_UNIT", "LEVEL_A_SUIT", "GAS_SEAL_KIT", "DECON_UNIT", "HAZMAT_SUIT", "NEUTRALIZATION_AGENT", "HAZMAT_CONTAINMENT", "ABSORBENT_BOOM"), null),
-                new Resource("RES-006", "Traffic & Crowd Control Unit 01", "Traffic & Safety", "Available", 22.3200, 73.1700, "Alkapuri Police Station", "+91 98234 56794", "Inspector Ramesh Patel", 10, Arrays.asList("TRAFFIC_CONTROL", "CROWD_CONTROL", "BARRICADES", "TRAFFIC_BARRICADE", "TRAFFIC_DIVERSION", "TACTICAL_UNIT", "EXTRICATION_EQUIPMENT", "TOW_TRUCK"), null),
-                new Resource("RES-007", "Disaster Utility & Generator Unit 01", "Utility Response", "Available", 22.3250, 73.1850, "Akota Utility Depot", "+91 98234 56795", "Eng. Dinesh Sharma", 6, Arrays.asList("EMERGENCY_GENERATOR", "GENSET_MOBILE", "POWER_RESTORATION_CREW", "HIGH_VOLTAGE_CREW", "TREE_TRIMMER", "WATER_REPAIR_CREW", "TREE_CLEARER", "POWER_CREW", "GENSET"), null),
-                new Resource("RES-008", "Specialized Drone & SAR Search Unit 01", "Search & Rescue", "Available", 22.3100, 73.1750, "Gotri SAR Command", "+91 98234 56796", "Captain Ankit Mehta", 5, Arrays.asList("DRONE_THERMAL", "THERMAL_DRONE", "SEARCH_DOGS", "NIGHT_VISION", "ROPE_RESCUE", "TRACKER", "BOOM_BARRIER", "SKIMMER", "CONTAINMENT_VESSEL"), null)
+                new Resource("RES-001", "NDRF Water Rescue Team 01", "Water Rescue", "Available", 22.3100, 73.1800, "Jarod Base", "+91 98234 56789", "Commander Rajesh Rao", 12, Arrays.asList("WATER_RESCUE", "INFLATABLE_BOAT", "HEAVY_PUMP"), null, "WATER-01", "FLOOD"),
+                new Resource("RES-002", "Vadodara Fire Tender 04", "Fire & Rescue", "En-Route", 22.3050, 73.1780, "Dandiyabazar Fire Station", "+91 98234 56790", "Captain Suresh Kumar", 6, Arrays.asList("FIRE_ENGINE", "FOAM_TENDER", "LADDER_TRUCK"), "INC-2026-002", "ENGINE-04", "FIRE"),
+                new Resource("RES-003", "SSG Trauma ALS Ambulance 02", "Advanced Ambulance", "On-Scene", 22.3020, 73.1880, "SSG Hospital ER", "+91 98234 56791", "Dr. Amit Shah", 4, Arrays.asList("ADVANCED_AMBULANCE", "TRAUMA_TEAM", "PARAMEDIC_TEAM"), "INC-2026-003", "MEDIC-02", "MEDICAL"),
+                new Resource("RES-004", "Highway Crash Extrication Unit 01", "Crash & Extrication", "Available", 22.3400, 73.2100, "Golden Chowkdi Depot", "+91 98234 56797", "Chief Devendra Joshi", 5, Arrays.asList("EXTRICATION_EQUIPMENT", "HYDRAULIC_CUTTER", "HEAVY_TOW"), null, "CRASH-01", "CRASH"),
+                new Resource("RES-005", "Hazmat Decon Unit 01", "Hazmat Unit", "Available", 22.3150, 73.1950, "GSFC Industrial Complex", "+91 98234 56793", "Inspector Priya Nair", 8, Arrays.asList("HAZMAT_SUIT_LEVEL_A", "GAS_DETECTOR", "DECONTAMINATION_UNIT"), null, "HAZMAT-01", "HAZMAT"),
+                new Resource("RES-006", "USAR Heavy Collapse Rescue 01", "Urban Search & Rescue", "Available", 22.3380, 73.1740, "Gorwa USAR Station", "+91 98234 56792", "Major Vikram Singh", 15, Arrays.asList("SEARCH_DOGS", "CONCRETE_CUTTER", "HEAVY_CRANE"), null, "COLLAPSE-01", "COLLAPSE"),
+                new Resource("RES-007", "Cyclone Rapid Response & Utility 01", "Cyclone Relief", "Available", 22.3250, 73.1850, "Akota Utility Depot", "+91 98234 56798", "Director Anil Verma", 10, Arrays.asList("EMERGENCY_GENERATOR", "TREE_TRIMMER", "DEBRIS_CLEARER"), null, "CYCLONE-01", "CYCLONE"),
+                new Resource("RES-008", "Specialized K9 & SAR Search Unit 01", "Search & Rescue", "Available", 22.3100, 73.1750, "Gotri SAR Command", "+91 98234 56796", "Captain Ankit Mehta", 5, Arrays.asList("DRONE_THERMAL", "SEARCH_DOGS", "ROPE_RESCUE"), null, "SAR-01", "SEARCH_RESCUE"),
+                new Resource("RES-009", "Vadodara Police Tactical Unit 01", "Tactical & Patrol", "Available", 22.3200, 73.1700, "Alkapuri Police Station", "+91 98234 56794", "Inspector Ramesh Patel", 8, Arrays.asList("TRAFFIC_CONTROL", "CROWD_CONTROL", "BARRICADES"), null, "POLICE-01", "POLICE")
         );
 
         for (Resource res : seedResources) {
@@ -321,13 +366,61 @@ public class DataInitializer implements CommandLineRunner {
             if (mongoTemplate != null) {
                 try {
                     mongoTemplate.save(res, "resources");
-                } catch (Exception e) {
-                    log.warn("Mongo resource save notice for {}: {}", res.getId(), e.getMessage());
-                }
+                } catch (Exception ignored) {}
             }
         }
-        log.info("Successfully seeded/updated {} response units in Resource Registry.", seedResources.size());
         sanitizeResourceData();
+    }
+
+    private void seedServiceRequests() {
+        if (serviceRequestRepository.count() > 0) {
+            return;
+        }
+
+        log.info("Seeding cross-department service requests...");
+        ServiceRequest req1 = new ServiceRequest(
+                null,
+                "INC-2026-001",
+                "FLOOD",
+                "FIRE",
+                "High-capacity de-watering submersible pump needed at Vishwamitri bridge pillar immediately.",
+                "CRITICAL",
+                "PENDING",
+                null,
+                null,
+                LocalDateTime.now().minusMinutes(15),
+                LocalDateTime.now().minusMinutes(15)
+        );
+
+        ServiceRequest req2 = new ServiceRequest(
+                null,
+                "INC-2026-002",
+                "FIRE",
+                "MEDICAL",
+                "Burn triage unit and 2 paramedics required on standby during chemical warehouse extinguishment.",
+                "HIGH",
+                "ACCEPTED",
+                "RES-003",
+                null,
+                LocalDateTime.now().minusMinutes(22),
+                LocalDateTime.now().minusMinutes(10)
+        );
+
+        ServiceRequest req3 = new ServiceRequest(
+                null,
+                "INC-2026-004",
+                "CRASH",
+                "POLICE",
+                "Expressway lane closure and traffic diversion team needed at Golden Chowkdi crash site.",
+                "CRITICAL",
+                "PENDING",
+                null,
+                null,
+                LocalDateTime.now().minusMinutes(5),
+                LocalDateTime.now().minusMinutes(5)
+        );
+
+        serviceRequestRepository.saveAll(Arrays.asList(req1, req2, req3));
     }
 
     private void sanitizeResourceData() {

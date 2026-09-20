@@ -1,8 +1,10 @@
 package com.resqgrid.backend.service;
 
+import com.resqgrid.backend.entity.DepartmentCategory;
 import com.resqgrid.backend.entity.Resource;
 import com.resqgrid.backend.repository.IncidentRepository;
 import com.resqgrid.backend.repository.ResourceRepository;
+import com.resqgrid.backend.security.UserPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,34 @@ public class ResourceService {
         return resourceRepository.findAll();
     }
 
+    public List<Resource> getScopedResources(UserPrincipal currentUser, String status) {
+        if (currentUser == null) {
+            if (status != null && !status.trim().isEmpty()) {
+                return resourceRepository.findByStatusIgnoreCase(status.trim());
+            }
+            return resourceRepository.findAll();
+        }
+
+        String role = currentUser.getRole() != null ? currentUser.getRole().toUpperCase().replace(" ", "_") : "";
+        if (role.contains("SUPER_ADMIN") || role.contains("SUPER ADMIN")) {
+            if (status != null && !status.trim().isEmpty()) {
+                return resourceRepository.findByStatusIgnoreCase(status.trim());
+            }
+            return resourceRepository.findAll();
+        }
+
+        String deptCategory = currentUser.getDepartmentCategory();
+        if (deptCategory == null || deptCategory.trim().isEmpty()) {
+            return resourceRepository.findAll();
+        }
+
+        String rawCat = deptCategory.toUpperCase().replace("CAT_", "");
+        if (status != null && !status.trim().isEmpty()) {
+            return resourceRepository.findByDepartmentCategoryIgnoreCaseAndStatusIgnoreCase(rawCat, status.trim());
+        }
+        return resourceRepository.findByDepartmentCategoryIgnoreCase(rawCat);
+    }
+
     public Optional<Resource> getResourceById(String id) {
         return resourceRepository.findById(id);
     }
@@ -37,17 +67,61 @@ public class ResourceService {
     }
 
     @Transactional
-    public Resource createResource(Resource resource) {
+    public Resource createResource(Resource resource, UserPrincipal currentUser) {
         if (resource.getId() == null || resource.getId().trim().isEmpty()) {
             long count = resourceRepository.count();
-            resource.setId(String.format("RES-%03d", count + 1));
+            String prefix = resource.getDepartmentCategory() != null ? resource.getDepartmentCategory().substring(0, Math.min(3, resource.getDepartmentCategory().length())).toUpperCase() : "UNIT";
+            resource.setId(String.format("%s-%03d", prefix, count + 1));
         }
         if (resource.getStatus() == null) {
             resource.setStatus("Available");
         }
+        if (resource.getCallSign() == null && resource.getName() != null) {
+            resource.setCallSign(resource.getName());
+        }
+        if (currentUser != null && currentUser.getDepartmentCategory() != null && resource.getDepartmentCategory() == null) {
+            resource.setDepartmentCategory(currentUser.getDepartmentCategory().toUpperCase().replace("CAT_", ""));
+        } else if (resource.getDepartmentCategory() == null) {
+            DepartmentCategory dc = DepartmentCategory.fromString(resource.getType());
+            resource.setDepartmentCategory(dc != null ? dc.name() : "FLOOD");
+        }
+
         Resource saved = resourceRepository.save(resource);
         mongoSyncService.syncResource(saved);
         return saved;
+    }
+
+    @Transactional
+    public Resource createResource(Resource resource) {
+        return createResource(resource, null);
+    }
+
+    @Transactional
+    public Resource updateResource(String id, Resource updated, UserPrincipal currentUser) {
+        Resource resource = resourceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Resource not found: " + id));
+
+        if (updated.getName() != null) resource.setName(updated.getName());
+        if (updated.getCallSign() != null) resource.setCallSign(updated.getCallSign());
+        if (updated.getType() != null) resource.setType(updated.getType());
+        if (updated.getStatus() != null) resource.setStatus(updated.getStatus());
+        if (updated.getBaseStation() != null) resource.setBaseStation(updated.getBaseStation());
+        if (updated.getContact() != null) resource.setContact(updated.getContact());
+        if (updated.getTeamLeader() != null) resource.setTeamLeader(updated.getTeamLeader());
+        if (updated.getPersonnelCount() != null) resource.setPersonnelCount(updated.getPersonnelCount());
+        if (updated.getDepartmentCategory() != null) resource.setDepartmentCategory(updated.getDepartmentCategory());
+        if (updated.getCapabilities() != null) resource.setCapabilities(updated.getCapabilities());
+
+        Resource saved = resourceRepository.save(resource);
+        mongoSyncService.syncResource(saved);
+        return saved;
+    }
+
+    @Transactional
+    public void deleteResource(String id, UserPrincipal currentUser) {
+        Resource resource = resourceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Resource not found: " + id));
+        resourceRepository.delete(resource);
     }
 
     @Transactional
@@ -59,30 +133,19 @@ public class ResourceService {
             throw new IllegalArgumentException("Resource status cannot be null or empty");
         }
 
-        String normalizedStatus = newStatus.trim();
+        String raw = newStatus.trim();
+        if ("Resolved".equalsIgnoreCase(raw) || "Completed".equalsIgnoreCase(raw)) {
+            throw new IllegalArgumentException("Resource status cannot be set to 'Resolved' or 'Completed'. Only Incidents can be resolved.");
+        }
+
+        String normalizedStatus = raw;
         if ("On-Site".equalsIgnoreCase(normalizedStatus)) {
             normalizedStatus = "On-Scene";
         }
+        final String effectiveStatus = normalizedStatus;
 
-        if ("Resolved".equalsIgnoreCase(normalizedStatus) || "Completed".equalsIgnoreCase(normalizedStatus)) {
-            throw new IllegalArgumentException("Invalid resource status: '" + newStatus + "' is invalid. Resource status must be one of: Available, En-Route, On-Scene, Returning. 'Resolved' is an Incident-only status.");
-        }
-
-        final String targetStatus = normalizedStatus;
-        List<String> validStatuses = List.of("Available", "En-Route", "On-Scene", "Returning");
-        boolean isValid = validStatuses.stream().anyMatch(s -> s.equalsIgnoreCase(targetStatus));
-        if (!isValid) {
-            throw new IllegalArgumentException("Invalid resource status: '" + newStatus + "'. Valid resource statuses are: Available, En-Route, On-Scene, Returning.");
-        }
-
-        // Canonical case match
-        final String canonicalStatus = validStatuses.stream()
-                .filter(s -> s.equalsIgnoreCase(targetStatus))
-                .findFirst()
-                .orElse(targetStatus);
-
-        resource.setStatus(canonicalStatus);
-        if ("Available".equalsIgnoreCase(canonicalStatus)) {
+        resource.setStatus(effectiveStatus);
+        if ("Available".equalsIgnoreCase(effectiveStatus)) {
             resource.setAssignedIncidentId(null);
         }
         Resource saved = resourceRepository.save(resource);
@@ -92,12 +155,12 @@ public class ResourceService {
         if (resource.getAssignedIncidentId() != null) {
             String incId = resource.getAssignedIncidentId();
             incidentRepository.findById(incId).ifPresent(inc -> {
-                if ("On-Scene".equalsIgnoreCase(canonicalStatus)) {
-                    inc.setStatus("On-Scene");
+                if ("On-Scene".equalsIgnoreCase(effectiveStatus) || "Arrived".equalsIgnoreCase(effectiveStatus)) {
+                    inc.setStatus("Arrived");
                     incidentRepository.save(inc);
                     mongoSyncService.syncIncident(inc);
-                } else if ("En-Route".equalsIgnoreCase(canonicalStatus)) {
-                    inc.setStatus("En-Route");
+                } else if ("En-Route".equalsIgnoreCase(effectiveStatus) || "En Route".equalsIgnoreCase(effectiveStatus)) {
+                    inc.setStatus("En Route");
                     incidentRepository.save(inc);
                     mongoSyncService.syncIncident(inc);
                 }

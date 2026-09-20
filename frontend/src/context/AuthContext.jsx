@@ -26,7 +26,8 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
-    const login = async (credentials) => {
+    const login = async (emailOrCreds, maybePassword) => {
+        const credentials = typeof emailOrCreds === "object" ? emailOrCreds : { email: emailOrCreds, password: maybePassword };
         const result = await authService.login(credentials);
         setUser(result.user);
         setToken(result.token);

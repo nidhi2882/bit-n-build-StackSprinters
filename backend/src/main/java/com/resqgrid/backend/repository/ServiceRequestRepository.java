@@ -10,11 +10,19 @@ import java.util.List;
 @Repository
 public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, Long> {
 
-    List<ServiceRequest> findByRequestedDepartmentIgnoreCaseInOrderByCreatedAtDesc(List<String> requestedDepartments);
+    List<ServiceRequest> findByRequestedByDepartmentIgnoreCaseOrderByCreatedAtDesc(String requestedByDepartment);
+
+    List<ServiceRequest> findByRequestedDepartmentIgnoreCaseOrderByCreatedAtDesc(String requestedDepartment);
+
+    List<ServiceRequest> findByRequestedDepartmentIgnoreCaseAndStatus(String requestedDepartment, String status);
 
     List<ServiceRequest> findByIncidentIdOrderByCreatedAtDesc(String incidentId);
 
+    List<ServiceRequest> findByStatusIgnoreCaseAndUrgencyIgnoreCaseAndCreatedAtBefore(String status, String urgency, LocalDateTime timeThreshold);
+
     List<ServiceRequest> findByStatusAndUrgencyAndCreatedAtBefore(String status, String urgency, LocalDateTime timeThreshold);
+
+    List<ServiceRequest> findByRequestedDepartmentIgnoreCaseInOrderByCreatedAtDesc(List<String> requestedDepartments);
 
     List<ServiceRequest> findByRequestedDepartmentIgnoreCaseInAndStatus(List<String> requestedDepartments, String status);
 

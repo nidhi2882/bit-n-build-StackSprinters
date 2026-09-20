@@ -76,19 +76,39 @@ public class IncidentService {
         return incidentRepository.findAllByOrderByReportedAtDesc();
     }
 
+    public String mapCategory(String type) {
+        com.resqgrid.backend.entity.DepartmentCategory cat = com.resqgrid.backend.entity.DepartmentCategory.fromString(type);
+        return cat != null ? cat.name() : "FLOOD";
+    }
+
     public List<String> getTypesForCategory(String category) {
         if (category == null) return Collections.emptyList();
-        String cat = category.toUpperCase().replace("CAT_", "").trim();
-        if (cat.contains("FIRE")) {
-            return Arrays.asList("FIRE", "Fire", "Explosion", "Smoke", "Fire Breakdown");
-        } else if (cat.contains("FLOOD") || cat.contains("WATER")) {
-            return Arrays.asList("FLOOD", "Flood", "Drowning", "Water Logging", "Flash Flood");
-        } else if (cat.contains("MED") || cat.contains("HOSP")) {
-            return Arrays.asList("MEDICAL", "Medical", "Accident", "Trauma", "Health Emergency");
-        } else if (cat.contains("POLICE") || cat.contains("SEC")) {
-            return Arrays.asList("POLICE", "Police", "Security", "Riot", "Theft", "Law Enforcement");
+        com.resqgrid.backend.entity.DepartmentCategory cat = com.resqgrid.backend.entity.DepartmentCategory.fromString(category);
+        String name = cat != null ? cat.name() : category.toUpperCase().replace("CAT_", "").trim();
+        List<String> list = new ArrayList<>();
+        list.add(name);
+        list.add(name.toLowerCase());
+        list.add(name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase());
+        if ("FIRE".equals(name)) {
+            list.addAll(Arrays.asList("Explosion", "Smoke", "Fire Breakdown"));
+        } else if ("FLOOD".equals(name)) {
+            list.addAll(Arrays.asList("Drowning", "Water Logging", "Flash Flood", "Water"));
+        } else if ("MEDICAL".equals(name)) {
+            list.addAll(Arrays.asList("Accident", "Trauma", "Health Emergency", "EMS"));
+        } else if ("POLICE".equals(name)) {
+            list.addAll(Arrays.asList("Security", "Riot", "Theft", "Law Enforcement"));
+        } else if ("CRASH".equals(name)) {
+            list.addAll(Arrays.asList("Highway Collision", "Traffic Pileup", "Vehicle Accident"));
+        } else if ("HAZMAT".equals(name)) {
+            list.addAll(Arrays.asList("Chemical Spill", "Gas Leak", "Toxic Fumes", "CBRN"));
+        } else if ("COLLAPSE".equals(name)) {
+            list.addAll(Arrays.asList("Building Collapse", "Structural Failure", "Trench Collapse", "USAR"));
+        } else if ("CYCLONE".equals(name)) {
+            list.addAll(Arrays.asList("Severe Weather", "Hurricane", "Storm Surge", "Tornado"));
+        } else if ("SEARCH_RESCUE".equals(name)) {
+            list.addAll(Arrays.asList("Missing Persons", "Wilderness Rescue", "K-9 Search"));
         }
-        return Collections.singletonList(category);
+        return list;
     }
 
     public List<Incident> getScopedIncidents(com.resqgrid.backend.security.UserPrincipal user) {
@@ -98,23 +118,29 @@ public class IncidentService {
 
         String role = user.getRole() != null ? user.getRole().toUpperCase().replace(" ", "_") : "CITIZEN";
 
-        if ("ROLE_SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(role) || "ROLE_EMERGENCY_OPERATOR".equals(role) || "EMERGENCY_OPERATOR".equals(role) || "AUTHORITY_ADMIN".equals(role) || "ROLE_AUTHORITY_ADMIN".equals(role)) {
+        if ("ROLE_SUPER_ADMIN".equals(role) || "SUPER_ADMIN".equals(role)) {
             return incidentRepository.findAllByOrderByReportedAtDesc();
-        } else if ("ROLE_DEPARTMENT_ADMIN".equals(role) || "DEPARTMENT_ADMIN".equals(role) || "HOSPITAL_ADMIN".equals(role) || "ROLE_HOSPITAL_ADMIN".equals(role)) {
+        } else if ("ROLE_DEPARTMENT_ADMIN".equals(role) || "DEPARTMENT_ADMIN".equals(role)) {
             String deptCategory = user.getDepartmentCategory();
             if (deptCategory == null || deptCategory.trim().isEmpty()) {
                 return incidentRepository.findAllByOrderByReportedAtDesc();
             }
-            List<String> types = getTypesForCategory(deptCategory);
-            List<Incident> ownCategoryIncidents = incidentRepository.findByTypeIgnoreCaseInOrderByReportedAtDesc(types);
+
+            com.resqgrid.backend.entity.DepartmentCategory dc = com.resqgrid.backend.entity.DepartmentCategory.fromString(deptCategory);
+            String catName = dc != null ? dc.name() : deptCategory.toUpperCase();
+
+            List<Incident> ownCategoryIncidents = incidentRepository.findByCategoryIgnoreCaseOrderByReportedAtDesc(catName);
+            if (ownCategoryIncidents.isEmpty()) {
+                List<String> types = getTypesForCategory(deptCategory);
+                ownCategoryIncidents = incidentRepository.findByTypeIgnoreCaseInOrderByReportedAtDesc(types);
+            }
 
             if (serviceRequestRepository == null) {
                 return ownCategoryIncidents;
             }
 
-            // Fetch incidents granted strictly via ACCEPTED ServiceRequests
-            String rawCat = deptCategory.toUpperCase().replace("CAT_", "");
-            List<String> deptVariants = Arrays.asList(deptCategory, "CAT_" + rawCat, rawCat);
+            // Fetch incidents granted strictly via ACCEPTED ServiceRequests targeting this department
+            List<String> deptVariants = Arrays.asList(catName, deptCategory, "CAT_" + catName);
             List<com.resqgrid.backend.entity.ServiceRequest> acceptedRequests =
                     serviceRequestRepository.findByRequestedDepartmentIgnoreCaseInAndStatus(deptVariants, "ACCEPTED");
 
@@ -145,21 +171,75 @@ public class IncidentService {
             });
 
             return result;
+        } else if ("ROLE_CITIZEN".equals(role) || "CITIZEN".equals(role)) {
+            String userId = String.valueOf(user.getId());
+            String email = user.getEmail();
+            List<Incident> byId = incidentRepository.findByReporterIdOrderByReportedAtDesc(userId);
+            if (!byId.isEmpty()) {
+                return byId;
+            }
+            if (email != null && !email.trim().isEmpty()) {
+                return incidentRepository.findByReporterEmailOrderByReportedAtDesc(email);
+            }
+            return Collections.emptyList();
         } else if ("ROLE_RESPONSE_TEAM".equals(role) || "RESPONSE_TEAM".equals(role)) {
             String unitId = user.getUnitId();
-            if (unitId == null || unitId.trim().isEmpty()) {
-                return Collections.emptyList();
+            if (unitId != null && !unitId.trim().isEmpty()) {
+                return incidentRepository.findByAssignedResourceIdsContainingOrderByReportedAtDesc(unitId);
             }
-            return incidentRepository.findByAssignedResourceIdsContainingOrderByReportedAtDesc(unitId);
-        } else if ("ROLE_CITIZEN".equals(role) || "CITIZEN".equals(role)) {
-            String email = user.getEmail();
-            if (email == null || email.trim().isEmpty()) {
-                return Collections.emptyList();
-            }
-            return incidentRepository.findByReporterEmailOrderByReportedAtDesc(email);
+            return Collections.emptyList();
         }
 
         return incidentRepository.findAllByOrderByReportedAtDesc();
+    }
+
+    @Transactional
+    public Incident reclassifyIncident(String incidentId, String newCategory) {
+        return reclassifyIncident(incidentId, newCategory, null, null);
+    }
+
+    @Transactional
+    public Incident reclassifyIncident(String incidentId, String newCategory, String reason, com.resqgrid.backend.security.UserPrincipal principal) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new RuntimeException("Incident not found: " + incidentId));
+
+        String oldCat = incident.getCategory() != null ? incident.getCategory() : incident.getType();
+        com.resqgrid.backend.entity.DepartmentCategory target = com.resqgrid.backend.entity.DepartmentCategory.fromString(newCategory);
+        String targetName = target != null ? target.name() : (newCategory != null ? newCategory.toUpperCase() : "FIRE");
+
+        incident.setCategory(targetName);
+        incident.setType(targetName.substring(0, 1).toUpperCase() + targetName.substring(1).toLowerCase());
+        Incident saved = incidentRepository.save(incident);
+        mongoSyncService.syncIncident(saved);
+
+        String actorName = principal != null ? principal.getName() : "Department Admin";
+        if (incidentActivityRepository != null) {
+            IncidentActivity activity = IncidentActivity.builder()
+                    .incidentId(incidentId)
+                    .activityText(String.format("CAD category reclassified from %s to %s by %s. Reason: %s",
+                            oldCat, targetName, actorName, reason != null ? reason : "Operational Triage Correction"))
+                    .actor(actorName)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            incidentActivityRepository.save(activity);
+        }
+
+        Alert alert = Alert.builder()
+                .id("ALT-REC-" + System.currentTimeMillis())
+                .type("RECLASSIFIED_INCIDENT")
+                .title("INCIDENT RECLASSIFIED: " + saved.getTitle())
+                .message(String.format("Incident %s reclassified to %s by %s.", saved.getId(), targetName, actorName))
+                .incidentId(saved.getId())
+                .targetDepartment(targetName)
+                .actionRequired("Acknowledge Reclassified Incident")
+                .active(true)
+                .time("Just now")
+                .createdAt(LocalDateTime.now())
+                .build();
+        alertRepository.save(alert);
+        mongoSyncService.syncAlert(alert);
+
+        return saved;
     }
 
     public boolean isUserAuthorizedForIncident(Incident incident, com.resqgrid.backend.security.UserPrincipal user) {
@@ -200,34 +280,6 @@ public class IncidentService {
         }
 
         return true;
-    }
-
-    @Transactional
-    public Incident reclassifyIncident(String incidentId, String newCategory) {
-        Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new RuntimeException("Incident not found: " + incidentId));
-
-        String formattedCategory = newCategory.toUpperCase().replace("CAT_", "").trim();
-        incident.setType(formattedCategory);
-        incident.setAiSummary("[RECLASSIFIED] Incident category manually reclassified to " + formattedCategory);
-
-        Alert reclassAlert = Alert.builder()
-                .id("ALT-" + System.currentTimeMillis())
-                .type("RECLASSIFIED")
-                .title("INCIDENT RECLASSIFIED TO " + formattedCategory)
-                .message(String.format("Incident %s has been rerouted to %s department.", incident.getId(), formattedCategory))
-                .incidentId(incident.getId())
-                .targetDepartment("CAT_" + formattedCategory)
-                .active(true)
-                .time("Just now")
-                .createdAt(LocalDateTime.now())
-                .build();
-        alertRepository.save(reclassAlert);
-        mongoSyncService.syncAlert(reclassAlert);
-
-        Incident saved = incidentRepository.save(incident);
-        mongoSyncService.syncIncident(saved);
-        return saved;
     }
 
     @Transactional
