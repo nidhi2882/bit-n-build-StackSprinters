@@ -70,3 +70,7 @@ def set_copilot_key(req: SetKeyRequest):
     copilot_engine.set_api_key(req.apiKey)
     return copilot_engine.get_active_key_info()
 
+@router.get("/copilot/sop/{category}")
+def get_department_sop(category: str):
+    return copilot_engine.get_sop(category)
+
