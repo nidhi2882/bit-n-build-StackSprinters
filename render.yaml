@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: resqgrid-backend
+    env: docker
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
+    plan: free
+    region: singapore
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:h2:mem:resqgrid;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
