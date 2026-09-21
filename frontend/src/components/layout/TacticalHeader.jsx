@@ -30,16 +30,21 @@ export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCoun
             <div className="h-16 w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-space-md">
                 {/* Mobile Menu Toggle & Left CAD Ticker & Quick Search */}
                 <div className="flex items-center gap-2 sm:gap-space-md flex-1 max-w-2xl">
-                    {onToggleMobileSidebar && (
-                        <button
-                            onClick={onToggleMobileSidebar}
-                            className="md:hidden p-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
-                            type="button"
-                            aria-label="Toggle Navigation Drawer"
-                        >
-                            <span className="material-symbols-outlined text-xl">menu</span>
-                        </button>
-                    )}
+                    <button
+                        onClick={() => {
+                            if (onToggleMobileSidebar) {
+                                onToggleMobileSidebar();
+                            } else {
+                                window.dispatchEvent(new CustomEvent('toggle-tactical-sidebar'));
+                            }
+                        }}
+                        className="md:hidden p-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors flex items-center justify-center"
+                        type="button"
+                        aria-label="Toggle Navigation Drawer"
+                    >
+                        <span className="material-symbols-outlined text-xl">menu</span>
+                    </button>
+
                     <div className="hidden xl:flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-error-container">
                         <span className="h-2 w-2 rounded-full bg-error animate-pulse"></span>
                         <span className="font-label-xs text-label-xs text-on-error-container uppercase font-semibold">
@@ -52,48 +57,50 @@ export default function TacticalHeader({ onOpenDispatchModal, activeIncidentCoun
                         </span>
                         <input
                             className="w-full h-9 pl-9 pr-space-sm bg-surface-container-low rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary-container"
-                            placeholder="Search incidents, units, callers, CAD IDs..."
+                            placeholder="Search incidents..."
                             type="text"
                         />
                     </div>
                 </div>
 
                 {/* Right Quick Actions & Profile */}
-                <div className="flex items-center gap-space-md">
+                <div className="flex items-center gap-1 sm:gap-space-md">
                     {onOpenDispatchModal && (
                         <button
                             onClick={onOpenDispatchModal}
-                            className="inline-flex items-center gap-space-xs px-space-md h-9 bg-primary-container hover:bg-primary text-on-primary-container font-label-md text-label-md rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-colors"
+                            className="inline-flex items-center gap-space-xs px-2.5 sm:px-space-md h-9 bg-primary-container hover:bg-primary text-on-primary-container font-label-md text-label-md rounded-lg shadow-sm transition-colors"
                             type="button"
+                            title="Dispatch Unit"
                         >
                             <span className="material-symbols-outlined text-base">add_alert</span>
-                            <span>+ Dispatch Unit</span>
+                            <span className="hidden sm:inline">+ Dispatch</span>
                         </button>
                     )}
 
                     <button
                         onClick={() => setShowBroadcastModal(true)}
-                        className="inline-flex items-center gap-1.5 px-3 h-9 bg-red-600 hover:bg-red-500 text-white font-label-md text-xs font-bold rounded-lg shadow-sm transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 h-9 bg-red-600 hover:bg-red-500 text-white font-label-md text-xs font-bold rounded-lg shadow-sm transition-colors"
                         type="button"
                         title="Broadcast Geofenced Reverse-911 Alert"
                     >
                         <span className="material-symbols-outlined text-base">campaign</span>
-                        <span>Reverse 911</span>
+                        <span className="hidden md:inline">Reverse 911</span>
                     </button>
 
                     <button
                         onClick={() => setCopilotOpen(!copilotOpen)}
-                        className={`inline-flex items-center gap-1.5 px-3 h-9 font-label-md text-xs font-bold rounded-lg border transition-colors ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 h-9 font-label-md text-xs font-bold rounded-lg border transition-colors ${
                             copilotOpen
                                 ? "bg-primary text-white border-primary shadow-sm"
                                 : "bg-primary/10 hover:bg-primary/20 text-primary border-primary/30"
                         }`}
                         type="button"
-                        title="AI Emergency Copilot & SOP Vector Store"
+                        title="AI Emergency Copilot"
                     >
                         <span className="material-symbols-outlined text-base">smart_toy</span>
-                        <span>AI Copilot</span>
+                        <span className="hidden sm:inline">AI Copilot</span>
                     </button>
+
 
                     {/* Alarm Sound & Notifications Toggle */}
                     <div className="flex items-center gap-space-xs">

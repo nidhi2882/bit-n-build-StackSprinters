@@ -638,3 +638,115 @@ body {
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
   border: 2px solid white;
 }
+
+/* ==========================================
+   📱 Mobile & Tablet Responsiveness Rules
+   ========================================== */
+@media (max-width: 1024px) {
+  .pl-64 {
+    padding-left: 0 !important;
+  }
+
+  .main-split-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 12px;
+    height: 60px;
+  }
+
+  .navbar-center {
+    display: none !important;
+  }
+
+  .navbar-right {
+    gap: 6px;
+  }
+
+  .brand-badge {
+    display: none;
+  }
+
+  .role-select-box {
+    padding: 4px 6px;
+  }
+
+  .role-select {
+    font-size: 0.75rem;
+    max-width: 110px;
+    text-overflow: ellipsis;
+  }
+
+  .btn-ai-copilot span,
+  .btn-report-emergency span {
+    display: none;
+  }
+
+  .btn-ai-copilot,
+  .btn-report-emergency {
+    padding: 8px 10px;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 60px;
+    left: -260px;
+    height: calc(100vh - 60px);
+    z-index: 1500;
+    transition: left 0.3s ease;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .app-content {
+    padding: 12px;
+    max-height: calc(100vh - 60px);
+  }
+
+  .copilot-drawer {
+    width: 100% !important;
+    top: 60px;
+    height: calc(100vh - 60px);
+  }
+
+  .modal-content {
+    max-width: 95vw !important;
+    margin: 10px;
+    max-height: 92vh;
+  }
+
+  .modal-body {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .overflow-x-auto-mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-brand span {
+    font-size: 1.05rem;
+  }
+
+  .stat-card {
+    padding: 10px 14px;
+  }
+
+  .stat-val {
+    font-size: 1.3rem;
+  }
+}
+

@@ -85,13 +85,13 @@ export default function SuperAdminDashboard() {
         <div className="bg-background font-body-md text-on-surface antialiased min-h-screen">
             <TacticalSidebar />
 
-            <div className="pl-64">
+            <div className="pl-0 md:pl-64">
                 <TacticalHeader
                     activeIncidentCount={activeCount}
                     onOpenDispatchModal={() => setSelectedIncident(incidents[0] || null)}
                 />
 
-                <main className="w-full pt-16 min-h-screen px-space-lg py-space-lg">
+                <main className="w-full pt-16 min-h-screen px-3 sm:px-space-lg py-space-lg">
                     <div className="flex flex-col w-full gap-space-lg max-w-[1920px] mx-auto">
                         {/* 1. Situation Banner */}
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container-high">
