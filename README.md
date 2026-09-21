@@ -7,7 +7,7 @@
 ---
 
 ## 🎥 Demo Video & Presentation
-🌐 **Live Web Application:** [https://bit-n-build-stack-sprinters.vercel.app](https://bit-n-build-stack-sprinters.vercel.app)
+🌐 **Live Web Application:** [[https://bit-n-build-stack-sprinters.vercel.app](https://bit-n-build-stack-sprinters.vercel.app)](https://bit-n-build-stack-sprinters.vercel.app)
 
 ▶️ **[Watch the ResQGrid demo](https://drive.google.com/file/d/1tI2c5Tru0btmVy3gLObA89w8CJBl0HKi/view?usp=sharing)**
 
