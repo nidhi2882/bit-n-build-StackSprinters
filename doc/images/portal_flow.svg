@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="100%" height="100%" style="background:#090d16; font-family:'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <linearGradient id="flowTitle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22d3ee" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <linearGradient id="stepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="#090d16" />
+
+  <!-- Header -->
+  <text x="600" y="45" font-size="26" font-weight="bold" fill="url(#flowTitle)" text-anchor="middle" letter-spacing="1">ResQGrid — End-to-End Emergency Portal Flow</text>
+  <text x="600" y="70" font-size="14" fill="#64748b" text-anchor="middle">Step-by-Step Data &amp; Operational Flow Across System Actors</text>
+
+  <!-- Flow Steps -->
+
+  <!-- STEP 1: Ingestion -->
+  <g transform="translate(50, 100)">
+    <rect width="320" height="180" rx="12" fill="url(#stepGrad)" stroke="#38bdf8" stroke-width="2"/>
+    <circle cx="35" cy="35" r="16" fill="#0284c7" />
+    <text x="35" y="40" font-size="14" font-weight="bold" fill="#fff" text-anchor="middle">1</text>
+    <text x="65" y="40" font-size="16" font-weight="bold" fill="#38bdf8">Emergency Ingestion</text>
+
+    <text x="20" y="75" font-size="12" fill="#e2e8f0">• Citizen submits report or 1-Tap SOS</text>
+    <text x="20" y="98" font-size="12" fill="#e2e8f0">• Auto-attaches GPS coordinates &amp; photo</text>
+    <text x="20" y="121" font-size="12" fill="#e2e8f0">• IoT Sensor triggers alert (Water/Gas)</text>
+    <text x="20" y="144" font-size="12" fill="#e2e8f0">• Returns tracking code (e.g. RQ-8921)</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <path d="M 370 190 L 430 190" stroke="#38bdf8" stroke-width="3" fill="none" stroke-dasharray="4,4"/>
+  <polygon points="435,190 425,184 425,196" fill="#38bdf8" />
+
+  <!-- STEP 2: AI Microservice Triage -->
+  <g transform="translate(440, 100)">
+    <rect width="320" height="180" rx="12" fill="url(#stepGrad)" stroke="#a855f7" stroke-width="2"/>
+    <circle cx="35" cy="35" r="16" fill="#7c3aed" />
+    <text x="35" y="40" font-size="14" font-weight="bold" fill="#fff" text-anchor="middle">2</text>
+    <text x="65" y="40" font-size="16" font-weight="bold" fill="#c084fc">AI Microservice Triage</text>
+
+    <text x="20" y="75" font-size="12" fill="#e2e8f0">• NLP classifies category (e.g. FLOOD)</text>
+    <text x="20" y="98" font-size="12" fill="#e2e8f0">• Hybrid Severity Engine scores Level 1-5</text>
+    <text x="20" y="121" font-size="12" fill="#e2e8f0">• 3-Signal Dup Matcher checks nearby</text>
+    <text x="20" y="144" font-size="12" fill="#e2e8f0">• Merges duplicates into Master Ticket</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <path d="M 760 190 L 820 190" stroke="#a855f7" stroke-width="3" fill="none" stroke-dasharray="4,4"/>
+  <polygon points="825,190 815,184 815,196" fill="#a855f7" />
+
+  <!-- STEP 3: Targeted Scoped Routing -->
+  <g transform="translate(830, 100)">
+    <rect width="320" height="180" rx="12" fill="url(#stepGrad)" stroke="#ef4444" stroke-width="2"/>
+    <circle cx="35" cy="35" r="16" fill="#dc2626" />
+    <text x="35" y="40" font-size="14" font-weight="bold" fill="#fff" text-anchor="middle">3</text>
+    <text x="65" y="40" font-size="16" font-weight="bold" fill="#fca5a5">Targeted WebSocket Push</text>
+
+    <text x="20" y="75" font-size="12" fill="#e2e8f0">• Socket.IO routes to room `dept:{id}`</text>
+    <text x="20" y="98" font-size="12" fill="#e2e8f0">• Prevents notification cross-talk</text>
+    <text x="20" y="121" font-size="12" fill="#e2e8f0">• Triggers BullMQ SLA Timer (5 min)</text>
+    <text x="20" y="144" font-size="12" fill="#e2e8f0">• Multi-channel SMS/Push alert sent</text>
+  </g>
+
+  <!-- Arrow 3 Down to 4 -->
+  <path d="M 990 280 L 990 350" stroke="#ef4444" stroke-width="3" fill="none" stroke-dasharray="4,4"/>
+  <polygon points="990,355 984,345 996,345" fill="#ef4444" />
+
+  <!-- STEP 4: Command Center CAD & Recommendation -->
+  <g transform="translate(830, 360)">
+    <rect width="320" height="180" rx="12" fill="url(#stepGrad)" stroke="#10b981" stroke-width="2"/>
+    <circle cx="35" cy="35" r="16" fill="#059669" />
+    <text x="35" y="40" font-size="14" font-weight="bold" fill="#fff" text-anchor="middle">4</text>
+    <text x="65" y="40" font-size="16" font-weight="bold" fill="#6ee7b7">CAD Triage &amp; Dispatch</text>
+
+    <text x="20" y="75" font-size="12" fill="#e2e8f0">• Operator verifies AI severity code</text>
+    <text x="20" y="98" font-size="12" fill="#e2e8f0">• OSRM ranks best responder units</text>
+    <text x="20" y="121" font-size="12" fill="#e2e8f0">• Capability &amp; load balancing filter</text>
+    <text x="20" y="144" font-size="12" fill="#e2e8f0">• Operator clicks "Dispatch Unit"</text>
+  </g>
+
+  <!-- Arrow 4 Left to 5 -->
+  <path d="M 830 450 L 770 450" stroke="#10b981" stroke-width="3" fill="none" stroke-dasharray="4,4"/>
+  <polygon points="765,450 775,444 775,456" fill="#10b981" />
+
+  <!-- STEP 5: First Responder Mobile Execution -->
+  <g transform="translate(440, 360)">
+    <rect width="320" height="180" rx="12" fill="url(#stepGrad)" stroke="#eab308" stroke-width="2"/>
+    <circle cx="35" cy="35" r="16" fill="#ca8a04" />
+    <text x="35" y="40" font-size="14" font-weight="bold" fill="#fff" text-anchor="middle">5</text>
+    <text x="65" y="40" font-size="16" font-weight="bold" fill="#fde047">Field Unit Mobile Execution</text>
+
+    <text x="20" y="75" font-size="12" fill="#e2e8f0">• Mobile App receives dispatch push</text>
+    <text x="20" y="98" font-size="12" fill="#e2e8f0">• First responder accepts assignment</text>
+    <text x="20" y="121" font-size="12" fill="#e2e8f0">• Streams live GPS breadcrumbs</text>
+    <text x="20" y="144" font-size="12" fill="#e2e8f0">• Taps status: En-Route → Arrived</text>
+  </g>
+
+  <!-- Arrow 5 Left to 6 -->
+  <path d="M 440 450 L 380 450" stroke="#eab308" stroke-width="3" fill="none" stroke-dasharray="4,4"/>
+  <polygon points="375,450 385,444 385,456" fill="#eab308" />
+
+  <!-- STEP 6: Hospital & Resolution Sync -->
+  <g transform="translate(50, 360)">
+    <rect width="320" height="180" rx="12" fill="url(#stepGrad)" stroke="#ec4899" stroke-width="2"/>
+    <circle cx="35" cy="35" r="16" fill="#db2777" />
+    <text x="35" y="40" font-size="14" font-weight="bold" fill="#fff" text-anchor="middle">6</text>
+    <text x="65" y="40" font-size="16" font-weight="bold" fill="#f472b6">Hospital Telemetry &amp; Close</text>
+
+    <text x="20" y="75" font-size="12" fill="#e2e8f0">• Casualty routing to ICU bed</text>
+    <text x="20" y="98" font-size="12" fill="#e2e8f0">• Hospital Admin updates bed telemetry</text>
+    <text x="20" y="121" font-size="12" fill="#e2e8f0">• Incident marked RESOLVED</text>
+    <text x="20" y="144" font-size="12" fill="#e2e8f0">• Citizen notified &amp; AAR PDF generated</text>
+  </g>
+
+  <!-- Bottom Summary Banner -->
+  <rect x="50" y="580" width="1100" height="170" rx="12" fill="#131c2e" stroke="#1e293b" stroke-width="2"/>
+  <text x="70" y="615" font-size="16" font-weight="bold" fill="#38bdf8">KEY SYSTEM ADVANTAGES DEMONSTRATED IN FLOW</text>
+
+  <g transform="translate(70, 635)">
+    <text x="0" y="20" font-size="13" font-weight="bold" fill="#6ee7b7">⚡ Under 30-Second Triage:</text>
+    <text x="180" y="20" font-size="13" fill="#94a3b8">Automated AI NLP classification replaces slow manual call intake queues.</text>
+
+    <text x="0" y="48" font-size="13" font-weight="bold" fill="#6ee7b7">🎯 Zero Notification Noise:</text>
+    <text x="180" y="48" font-size="13" fill="#94a3b8">Structural WebSocket room scoping isolates departmental alert chatter.</text>
+
+    <text x="0" y="76" font-size="13" font-weight="bold" fill="#6ee7b7">🚗 OSRM Road Routing:</text>
+    <text x="180" y="76" font-size="13" fill="#94a3b8">Calculates actual driving time over road networks rather than straight lines.</text>
+
+    <text x="0" y="104" font-size="13" font-weight="bold" fill="#6ee7b7">🛡️ Immutable Auditability:</text>
+    <text x="180" y="104" font-size="13" fill="#94a3b8">Append-only audit logging captures every state transition &amp; operator override.</text>
+  </g>
+</svg>

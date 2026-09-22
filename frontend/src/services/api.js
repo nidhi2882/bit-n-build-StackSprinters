@@ -8,6 +8,7 @@ const AI_SERVICE_BASE_URL = import.meta.env.VITE_AI_SERVICE_BASE_URL || "http://
 
 export const apiClient = axios.create({
     baseURL: API_BASE_URL,
+    timeout: 4000,
     headers: {
         "Content-Type": "application/json",
     },
@@ -15,6 +16,7 @@ export const apiClient = axios.create({
 
 export const aiClient = axios.create({
     baseURL: AI_SERVICE_BASE_URL,
+    timeout: 4000,
     headers: {
         "Content-Type": "application/json",
     },

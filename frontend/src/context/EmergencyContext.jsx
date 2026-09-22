@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { incidentService } from "../services/incidentService";
 import { resourceService } from "../services/resourceService";
 import { hospitalService } from "../services/hospitalService";
+import { alertService } from "../services/alertService";
 import { apiClient } from "../services/api";
 import { mockIncidents } from "../mock/mockIncidents";
 import { mockResources } from "../mock/mockResources";
@@ -11,10 +12,10 @@ import { mockAlerts } from "../mock/mockAlerts";
 const EmergencyContext = createContext();
 
 export const EmergencyProvider = ({ children }) => {
-    const [incidents, setIncidents] = useState([]);
-    const [resources, setResources] = useState([]);
-    const [hospitals, setHospitals] = useState([]);
-    const [alerts, setAlerts] = useState([]);
+    const [incidents, setIncidents] = useState(mockIncidents);
+    const [resources, setResources] = useState(mockResources);
+    const [hospitals, setHospitals] = useState(mockHospitals);
+    const [alerts, setAlerts] = useState(mockAlerts);
     const [userRole, setUserRole] = useState("Emergency Operator"); // 'Emergency Operator' | 'Citizen' | 'Response Team' | 'Hospital Admin' | 'Authority Admin'
     
     // UI state
@@ -35,7 +36,7 @@ export const EmergencyProvider = ({ children }) => {
                 incidentService.getIncidents(),
                 resourceService.getResources(),
                 hospitalService.getHospitals(),
-                apiClient.get("/alerts").then(r => r.data)
+                alertService.getActiveAlerts()
             ]);
 
             if (incs.status === "fulfilled" && Array.isArray(incs.value)) {

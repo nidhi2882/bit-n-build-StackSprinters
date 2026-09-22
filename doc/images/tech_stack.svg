@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="100%" height="100%" style="background:#090d16; font-family:'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background Grid -->
+  <rect width="1200" height="800" fill="#090d16" />
+  
+  <!-- Header -->
+  <text x="600" y="50" font-size="28" font-weight="bold" fill="url(#titleGrad)" text-anchor="middle" letter-spacing="1">ResQGrid — Unified Technology Stack</text>
+  <text x="600" y="78" font-size="14" fill="#64748b" text-anchor="middle">End-to-End Enterprise Stack &amp; Framework Integration</text>
+
+  <!-- Card 1: Frontend & Command Center -->
+  <g transform="translate(60, 110)" filter="url(#shadow)">
+    <rect width="510" height="300" rx="12" fill="#131c2e" stroke="#1e293b" stroke-width="2"/>
+    <rect width="510" height="45" rx="12" fill="#1e293b"/>
+    <text x="25" y="28" font-size="16" font-weight="bold" fill="#38bdf8">🖥️ Frontend Web &amp; Command Center</text>
+    
+    <g transform="translate(25, 65)">
+      <text x="0" y="20" font-size="14" font-weight="bold" fill="#f8fafc">React 19 + TypeScript + Vite</text>
+      <text x="0" y="38" font-size="12" fill="#94a3b8">Ultra-fast component rendering &amp; strict type checking</text>
+
+      <text x="0" y="75" font-size="14" font-weight="bold" fill="#f8fafc">MapLibre GL JS + Leaflet + OpenStreetMap</text>
+      <text x="0" y="93" font-size="12" fill="#94a3b8">60 FPS GPU vector tile map radar &amp; live marker clustering</text>
+
+      <text x="0" y="130" font-size="14" font-weight="bold" fill="#f8fafc">TailwindCSS + shadcn/ui + Lucide Icons</text>
+      <text x="0" y="148" font-size="12" fill="#94a3b8">Modern dark-mode design system &amp; accessible CAD UI</text>
+
+      <text x="0" y="185" font-size="14" font-weight="bold" fill="#f8fafc">Zustand + TanStack Query v5</text>
+      <text x="0" y="203" font-size="12" fill="#94a3b8">Client UI state &amp; async server-state caching/refetching</text>
+    </g>
+  </g>
+
+  <!-- Card 2: Backend API & Gateway -->
+  <g transform="translate(630, 110)" filter="url(#shadow)">
+    <rect width="510" height="300" rx="12" fill="#131c2e" stroke="#1e293b" stroke-width="2"/>
+    <rect width="510" height="45" rx="12" fill="#1e293b"/>
+    <text x="25" y="28" font-size="16" font-weight="bold" fill="#818cf8">⚙️ Backend API &amp; Microservices</text>
+    
+    <g transform="translate(25, 65)">
+      <text x="0" y="20" font-size="14" font-weight="bold" fill="#f8fafc">Spring Boot 4.x (Java 21) / NestJS 10 (Node/TS)</text>
+      <text x="0" y="38" font-size="12" fill="#94a3b8">Enterprise CAD backend with Dependency Injection &amp; REST DTOs</text>
+
+      <text x="0" y="75" font-size="14" font-weight="bold" fill="#f8fafc">Argon2id + JWT + CASL RBAC/ABAC</text>
+      <text x="0" y="93" font-size="12" fill="#94a3b8">Military-grade password security &amp; fine-grained department policies</text>
+
+      <text x="0" y="130" font-size="14" font-weight="bold" fill="#f8fafc">Socket.IO v4 / STOMP WebSocket Gateway</text>
+      <text x="0" y="148" font-size="12" fill="#94a3b8">Scoped rooms (authority:{id}, dept:{id}) to stop notification noise</text>
+
+      <text x="0" y="185" font-size="14" font-weight="bold" fill="#f8fafc">BullMQ + Redis SLA Escalation Scheduler</text>
+      <text x="0" y="203" font-size="12" fill="#94a3b8">Delayed background job timers for P1/P2 SLA breach auto-escalation</text>
+    </g>
+  </g>
+
+  <!-- Card 3: AI & Machine Learning -->
+  <g transform="translate(60, 440)" filter="url(#shadow)">
+    <rect width="510" height="310" rx="12" fill="#131c2e" stroke="#1e293b" stroke-width="2"/>
+    <rect width="510" height="45" rx="12" fill="#1e293b"/>
+    <text x="25" y="28" font-size="16" font-weight="bold" fill="#c084fc">🤖 AI / ML Microservice</text>
+    
+    <g transform="translate(25, 65)">
+      <text x="0" y="20" font-size="14" font-weight="bold" fill="#f8fafc">Python 3.11 + FastAPI</text>
+      <text x="0" y="38" font-size="12" fill="#94a3b8">Asynchronous high-performance machine learning microservice API</text>
+
+      <text x="0" y="75" font-size="14" font-weight="bold" fill="#f8fafc">scikit-learn + Sentence-Transformers</text>
+      <text x="0" y="93" font-size="12" fill="#94a3b8">Free-text incident NLP classification &amp; 384-d text embeddings</text>
+
+      <text x="0" y="130" font-size="14" font-weight="bold" fill="#f8fafc">3-Signal Duplicate Detection Engine</text>
+      <text x="0" y="148" font-size="12" fill="#94a3b8">Spatial (200m radius) + Temporal (30m) + Cosine similarity matching</text>
+
+      <text x="0" y="185" font-size="14" font-weight="bold" fill="#f8fafc">OpenCV + CLIP / YOLO Photo Triage</text>
+      <text x="0" y="203" font-size="12" fill="#94a3b8">Computer vision flame, flood depth, &amp; structural damage scoring</text>
+
+      <text x="0" y="240" font-size="14" font-weight="bold" fill="#f8fafc">LangChain / Anthropic Claude RAG Copilot</text>
+      <text x="0" y="258" font-size="12" fill="#94a3b8">Natural language command center operational query answering</text>
+    </g>
+  </g>
+
+  <!-- Card 4: Data, GIS & Mobile -->
+  <g transform="translate(630, 440)" filter="url(#shadow)">
+    <rect width="510" height="310" rx="12" fill="#131c2e" stroke="#1e293b" stroke-width="2"/>
+    <rect width="510" height="45" rx="12" fill="#1e293b"/>
+    <text x="25" y="28" font-size="16" font-weight="bold" fill="#34d399">🗄️ Database, GIS, Mobile &amp; Infra</text>
+    
+    <g transform="translate(25, 65)">
+      <text x="0" y="20" font-size="14" font-weight="bold" fill="#f8fafc">MongoDB 7.0 + 2Dsphere / PostGIS</text>
+      <text x="0" y="38" font-size="12" fill="#94a3b8">Native GeoJSON spatial indexing ($nearSphere) &amp; vector search</text>
+
+      <text x="0" y="75" font-size="14" font-weight="bold" fill="#f8fafc">OSRM (Open Source Routing Machine)</text>
+      <text x="0" y="93" font-size="12" fill="#94a3b8">Self-hosted road network routing &amp; live travel time ETA calculation</text>
+
+      <text x="0" y="130" font-size="14" font-weight="bold" fill="#f8fafc">React Native (Expo Mobile App)</text>
+      <text x="0" y="148" font-size="12" fill="#94a3b8">First responder GPS tracking, offline SQLite queue &amp; FCM push</text>
+
+      <text x="0" y="185" font-size="14" font-weight="bold" fill="#f8fafc">Multi-Channel Gateway (Twilio &amp; SendGrid)</text>
+      <text x="0" y="203" font-size="12" fill="#94a3b8">SMS emergency alerts, emails, FCM push &amp; reverse 911 broadcasts</text>
+
+      <text x="0" y="240" font-size="14" font-weight="bold" fill="#f8fafc">Docker Compose &amp; Cloudflare R2 / MinIO</text>
+      <text x="0" y="258" font-size="12" fill="#94a3b8">Single-command local monorepo &amp; S3 object media storage</text>
+    </g>
+  </g>
+</svg>

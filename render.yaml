@@ -12,4 +12,18 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:h2:mem:resqgrid;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+        fromDatabase:
+          name: resqgrid-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_DRIVER
+        value: org.postgresql.Driver
+      - key: SPRING_JPA_DATABASE_PLATFORM
+        value: org.hibernate.dialect.PostgreSQLDialect
+
+databases:
+  - name: resqgrid-db
+    databaseName: resqgrid
+    user: resqgrid_user
+    plan: free
+    region: singapore
+
