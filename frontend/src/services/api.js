@@ -39,13 +39,16 @@ apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            
-            // Avoid infinite refresh loop if already on login/register/public report page
-            const currentPath = window.location.pathname;
-            if (currentPath !== "/login" && currentPath !== "/register" && currentPath !== "/report") {
-                window.location.href = "/login";
+            const token = localStorage.getItem("token");
+            if (token && !token.startsWith("demo-token-") && !token.startsWith("mock-jwt-")) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                
+                // Avoid infinite refresh loop if already on login/register/public report page
+                const currentPath = window.location.pathname;
+                if (currentPath !== "/login" && currentPath !== "/register" && currentPath !== "/report") {
+                    window.location.href = "/login";
+                }
             }
         }
         return Promise.reject(error);

@@ -1,7 +1,13 @@
+import { apiClient } from "./api";
+
 // Pre-seeded local accounts matching backend DataInitializer for standalone Vercel deployment
 const SEEDED_USERS = {
     "david.chandler@resqgrid.gov": { id: "usr_super", name: "David Chandler", email: "david.chandler@resqgrid.gov", role: "Super Admin", departmentCategory: null },
     "superadmin@resqgrid.gov": { id: "usr_super2", name: "Super Admin Control", email: "superadmin@resqgrid.gov", role: "Super Admin", departmentCategory: null },
+    "operator@resqgrid.gov": { id: "usr_op", name: "Emergency Operator", email: "operator@resqgrid.gov", role: "Emergency Operator", departmentCategory: null },
+    "responder@ndrf.gov": { id: "usr_resp", name: "NDRF Response Lead", email: "responder@ndrf.gov", role: "Response Team", departmentCategory: "FLOOD" },
+    "hospital@ssg.org": { id: "usr_hosp", name: "SSG Hospital Admin", email: "hospital@ssg.org", role: "Hospital Admin", departmentCategory: "MEDICAL" },
+    "authority@vadodara.gov": { id: "usr_auth", name: "Vadodara Authority Admin", email: "authority@vadodara.gov", role: "Authority Admin", departmentCategory: null },
     "flood.admin@resqgrid.gov": { id: "usr_flood", name: "Commander Rajesh Rao", email: "flood.admin@resqgrid.gov", role: "Department Admin", departmentCategory: "FLOOD" },
     "fire.admin@resqgrid.gov": { id: "usr_fire", name: "Captain Suresh Kumar", email: "fire.admin@resqgrid.gov", role: "Department Admin", departmentCategory: "FIRE" },
     "medical.admin@resqgrid.gov": { id: "usr_med", name: "Dr. Sunita Patel", email: "medical.admin@resqgrid.gov", role: "Department Admin", departmentCategory: "MEDICAL" },

@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
         const initAuth = () => {
             const storedUser = authService.getCurrentUser();
             const storedToken = localStorage.getItem("token");
-            if (storedUser && storedToken && !storedToken.startsWith("demo-token-") && !storedToken.startsWith("mock-jwt-")) {
+            if (storedUser && storedToken) {
                 setUser(storedUser);
                 setToken(storedToken);
             } else {
